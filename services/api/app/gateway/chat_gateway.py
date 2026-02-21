@@ -59,6 +59,7 @@ class ChatGateway:
             answer = await self.orchestrator.handle(
                 message=message,
                 user_id=identity.user_id,
+                channel=channel,
             )
 
             return {"text": answer}

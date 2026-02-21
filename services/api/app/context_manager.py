@@ -16,5 +16,8 @@ class ContextManager:
         self.mongo = MongoClient(os.getenv("MONGO_URL"))
         self.redis = redis.Redis(host=os.getenv("REDIS_HOST"), port=6379)
 
-    async def get_context(self, message: str):
-        return {"user": "demo", "message": message}
+    async def build(self, user_id, message, chat_history=None):
+        return {
+            "user_id": str(user_id),
+            "message": message,
+        }

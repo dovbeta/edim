@@ -1,9 +1,17 @@
+import os
+
 from fastapi import FastAPI
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from context_manager import ContextManager
 from db.session import AsyncSessionLocal
 from gateway.chat_gateway import ChatGateway
+from llm_client import GeminiClient
 from orchestrator import Orchestrator
 from core.chat_request import ChatRequest
 from core.contact_request import ContactRequest
+from chat_history.repository import ChatHistoryRepository
+from chat_history.service import ChatHistoryService
 
 app = FastAPI(title="E-Dim Copilot API")
 
@@ -15,11 +23,36 @@ def get_session_factory():
     return AsyncSessionLocal
 
 
-orchestrator = Orchestrator()
+# 🧠 Mongo Chat History
+mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+mongo_db = mongo_client[os.getenv("MONGO_DB", "edim")]
+mongo_messages = mongo_db["messages"]
+
+chat_history_repo = ChatHistoryRepository(mongo_messages)
+chat_history = ChatHistoryService(chat_history_repo)
+llm_client = GeminiClient()
+context_manager = ContextManager()
+
+
+# 🤖 Orchestrator
+orchestrator = Orchestrator(
+    llm=llm_client,
+    context_manager=context_manager,
+    chat_history=chat_history
+)
+
+
+# 🚪 Gateway
 gateway = ChatGateway(
     session_factory=get_session_factory(),
     orchestrator=orchestrator,
 )
+
+
+# -------------------------------------------------
+# ROUTES
+# -------------------------------------------------
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
     return await gateway.handle_message(
