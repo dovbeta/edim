@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List
 
 from sqlalchemy import String, DateTime
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +31,16 @@ class Provider(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False,
+    )
+
+    integration_config: Mapped[dict] = mapped_column(
+        postgresql.JSONB,
+        nullable=True,
+    )
+
+    last_import_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=True,
     )
 
     organizations: Mapped[List["Organization"]] = relationship(

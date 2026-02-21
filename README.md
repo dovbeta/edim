@@ -206,8 +206,16 @@ watchmedo auto-restart
 Importing data from provider:
 
 ```
-python services/api/app/integrations/cli/import_provider.py --provider_id <id>
+python services/api/app/integrations/cli/import_provider.py --provider-id <id>
 ```
+
+Selective import:
+
+```
+python services/api/app/integrations/cli/import_provider.py --provider-id <id> --include buildings --include units
+```
+
+Available options for `--include`: `buildings`, `units`, `residents`, `accruals`.
 
 ---
 

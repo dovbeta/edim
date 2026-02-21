@@ -20,6 +20,12 @@ class Building(Base):
 
     name: Mapped[str] = mapped_column(String, nullable=False)
 
+    external_id: Mapped[str] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+
     organization_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,

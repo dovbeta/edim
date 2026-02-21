@@ -20,6 +20,12 @@ class Unit(Base):
 
     number: Mapped[str] = mapped_column(String, nullable=False)
 
+    external_id: Mapped[str] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+
     unit_type: Mapped[str] = mapped_column(
         String,
         default="apartment",

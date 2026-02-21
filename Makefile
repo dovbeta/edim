@@ -95,6 +95,24 @@ db-apply:
 	$(COMPOSE) exec $(API) alembic upgrade head
 
 # =========================================================
+# IMPORTS
+# =========================================================
+
+# Import provider data
+# usage:
+#   make import-provider PROVIDER=<uuid>
+#   make import-provider PROVIDER=<uuid> INCLUDE=units
+#   make import-provider PROVIDER=<uuid> INCLUDE="buildings units"
+import-provider:
+	$(COMPOSE) exec $(API) python -m integrations.cli.import_provider \
+		--provider-id $(PROVIDER) \
+		$(foreach i,$(INCLUDE),--include $(i))
+
+# Import all providers
+import-all:
+	$(COMPOSE) exec $(API) python -m app.integrations.cli.import_all_providers
+
+# =========================================================
 # SEED / ADMIN
 # =========================================================
 
@@ -141,4 +159,7 @@ help:
 	@echo ""
 	@echo "  make db-reset      - reset database"
 	@echo "  make seed          - seed data"
+	@echo ""
+	@echo "  make import-provider PROVIDER=<uuid> [INCLUDE=\"units buildings\"]"
+	@echo "  make import-all"
 	@echo ""
