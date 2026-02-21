@@ -30,7 +30,7 @@ class ChatGateway:
             )
 
             # 🆕 новий користувач
-            if not identity:
+            if not identity or not identity.phone:
                 identity = ChatIdentity(
                     channel=channel,
                     external_id=external_user_id,
@@ -44,15 +44,17 @@ class ChatGateway:
                     "text": (
                         "👋 Вітаємо!\n\n"
                         "Поділіться номером телефону 📱\n"
-                        "Можливо ми знайдемо вашу квартиру."
+                        "Можливо ми знайдемо інформацію про вашу нерухомість."
                     ),
                 }
 
-            # 📱 identity є але не привʼязаний або не verified
-            if not identity.user_id or not identity.verified:
+            # якщо користувача немає, напивати відповідне повідомлення
+            if not identity.user_id:
                 return {
-                    "need_phone": True,
-                    "text": "Будь ласка, поділіться номером телефону 📱",
+                    "text": (
+                        "👋 Вітаємо!\n\n"
+                        "Зверніться до адміністратора системи"
+                    ),
                 }
 
             # ✅ нормальний сценарій
@@ -107,7 +109,7 @@ class ChatGateway:
                 return {
                     "text": (
                         f"Дякуємо, {user.first_name or ''}! 🙌\n"
-                        "Ми знайшли вас у системі ОСББ."
+                        "Ми знайшли вас у системі."
                     )
                 }
 
