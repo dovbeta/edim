@@ -1,15 +1,15 @@
-﻿# EвЂ‘DIM Copilot
+﻿# E‑DIM Copilot
 
-AI Copilot for residential buildings (OSBB) that integrates with messengers (Telegram/Viber) and personalizes responses using internal building and unit data.
+AI Copilot for residential buildings (OSBB) that integrates with messengers (Telegram/Viber) and personalizes responses using internal building and apartment data.
 
 ---
 
-# рџЏў Overview
+# 🏢 Overview
 
-EвЂ‘DIM Copilot is an AI assistant for residents of apartment buildings that:
+E‑DIM Copilot is an AI assistant for residents of apartment buildings that:
 
 * answers questions about the building
-* knows the user and their unit
+* knows the user and their apartment
 * integrates with Telegram
 * uses internal OSBB data (debts, announcements, docs)
 
@@ -20,27 +20,28 @@ Example:
 
 ---
 
-# рџ§  Architecture
+# 🧠 Architecture
 
 ## Components
 
-* **Telegram Bot** вЂ” user interface
-* **API (FastAPI)** вЂ” chat endpoint & orchestration
-* **Chat Gateway** вЂ” identity & linking logic
-* **Orchestrator** вЂ” builds Copilot response
-* **Context Manager** вЂ” loads user/building data
-* **LLM Client** вЂ” AI model integration (planned)
+* **Telegram Bot** — user interface
+* **API (FastAPI)** — chat endpoint & orchestration
+* **Chat Gateway** — identity & linking logic
+* **Orchestrator** — builds Copilot response
+* **Context Manager** — loads user/building data
+* **Integrations Runner** — imports data from external Providers
+* **LLM Client** — AI model integration (planned)
 
 ## Data Stores
 
-* **Postgres** вЂ” users, identities, units
-* **MongoDB** вЂ” documents & FAQ
-* **Qdrant** вЂ” vector search
-* **Redis** вЂ” cache/session (planned)
+* **Postgres** — users, identities, units, buildings, organizations, providers
+* **MongoDB** — documents & FAQ
+* **Qdrant** — vector search
+* **Redis** — cache/session (planned)
 
 ---
 
-# рџ“‚ Project Structure
+# 📂 Project Structure
 
 ```
 EDim/
@@ -49,11 +50,17 @@ services/
   api/
     app/
       main.py
+      orchestrator.py
+      context_manager.py
+      llm_client.py
       core/
       db/
+        models/
       gateway/
-      orchestrator/
-      llm/
+      integrations/
+        importers/
+        sources/
+        cli/
 
   telegram-bot/
     bot.py
@@ -66,15 +73,15 @@ README.md
 
 ---
 
-# рџљЂ Quick Start (Podman)
+# 🚀 Quick Start (Podman)
 
-## 1пёЏвѓЈ Start Podman machine
+## 1️⃣ Start Podman machine
 
 ```
 podman machine start
 ```
 
-## 2пёЏвѓЈ Build & run
+## 2️⃣ Build & run
 
 ```
 podman compose up --build
@@ -88,7 +95,7 @@ http://localhost:8000
 
 ---
 
-# рџ¤– Telegram Bot
+# 🤖 Telegram Bot
 
 Environment variables:
 
@@ -100,30 +107,32 @@ COPILOT_API_URL=http://api:8000
 Bot flow:
 
 1. User sends message
-2. Copilot asks for phone
+2. Copilot asks for phone (if not linked)
 3. User shares contact
 4. Identity linked to resident
 5. Personalized Copilot responses
 
 ---
 
-# рџ‘¤ Identity Model
+# 👤 Identity Model
 
 ```
-chat_identity в†’ phone в†’ user в†’ unit
+provider → organization → building → unit ← user ← chat_identity
 ```
 
 Tables:
 
+* providers
+* organizations
+* buildings
+* units (apartments, storages, etc.)
 * users
 * chat_identities
-* units
-* buildings
-* user_units
+* user_units (m2m linking)
 
 ---
 
-# рџ”— API Endpoints
+# 🔗 API Endpoints
 
 ## POST /chat
 
@@ -135,7 +144,10 @@ Request:
 {
   "channel": "telegram",
   "external_user_id": "123",
-  "message": "Hello"
+  "message": "Hello",
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "johndoe"
 }
 ```
 
@@ -162,43 +174,54 @@ or
 
 Phone linking
 
+Request:
+
 ```
 {
   "channel": "telegram",
   "external_user_id": "123",
-  "phone": "+380..."
+  "phone": "+380...",
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "johndoe"
 }
 ```
 
 ---
 
-# рџ§Є Development
+# 🧪 Development
 
-API autoвЂ‘reload enabled via:
+API auto‑reload enabled via:
 
 ```
 uvicorn --reload
 ```
 
-Telegram bot autoвЂ‘reload via:
+Telegram bot auto‑reload via:
 
 ```
 watchmedo auto-restart
 ```
 
+Importing data from provider:
+
+```
+python services/api/app/integrations/cli/import_provider.py --provider_id <id>
+```
+
 ---
 
-# рџ—є Roadmap
+# 🗺 Roadmap
 
-* Unit linking
-* Resident registry import
+* ✅ Unit linking (formerly Apartment)
+* ✅ Resident registry import (Providers framework)
 * Context personalization
 * LLM integration
 * Resident Copilot MVP
 
 ---
 
-# рџЏ— Tech Stack
+# 🏗 Tech Stack
 
 * FastAPI
 * SQLAlchemy
@@ -210,7 +233,6 @@ watchmedo auto-restart
 
 ---
 
-# рџ“њ License
+# 📜 License
 
-Private project вЂ” EвЂ‘DIM
-
+Private project — E‑DIM
