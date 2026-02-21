@@ -31,11 +31,23 @@ class Unit(Base):
         default="apartment",
         nullable=False,
     )
-    # apartment | storage | parking | garage | commercial
 
     building_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("buildings.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+
+    section: Mapped[str | None] = mapped_column(String, nullable=True)
+    floor: Mapped[int | None] = mapped_column(nullable=True)
+
+    area_total: Mapped[float | None] = mapped_column(nullable=True)
+
+    rooms: Mapped[int | None] = mapped_column(nullable=True)
+
+    personal_account: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
         index=True,
     )
 
