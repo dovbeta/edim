@@ -9,8 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..base import Base
 
 
-class Apartment(Base):
-    __tablename__ = "apartments"
+class Unit(Base):
+    __tablename__ = "units"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -19,6 +19,13 @@ class Apartment(Base):
     )
 
     number: Mapped[str] = mapped_column(String, nullable=False)
+
+    unit_type: Mapped[str] = mapped_column(
+        String,
+        default="apartment",
+        nullable=False,
+    )
+    # apartment | storage | parking | garage | commercial
 
     building_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("buildings.id", ondelete="CASCADE"),
@@ -33,11 +40,11 @@ class Apartment(Base):
     )
 
     building: Mapped["Building"] = relationship(
-        back_populates="apartments"
+        back_populates="units"
     )
 
-    residents: Mapped[List["UserApartment"]] = relationship(
-        back_populates="apartment",
+    users: Mapped[List["UserUnit"]] = relationship(
+        back_populates="unit",
         cascade="all, delete-orphan",
     )
 
@@ -45,6 +52,7 @@ class Apartment(Base):
         UniqueConstraint(
             "building_id",
             "number",
-            name="uq_apartment_building_number",
+            "unit_type",
+            name="uq_unit_building_number_type",
         ),
     )

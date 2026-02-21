@@ -1,15 +1,15 @@
-# E‑DIM Copilot
+﻿# EвЂ‘DIM Copilot
 
-AI Copilot for residential buildings (OSBB) that integrates with messengers (Telegram/Viber) and personalizes responses using internal building and apartment data.
+AI Copilot for residential buildings (OSBB) that integrates with messengers (Telegram/Viber) and personalizes responses using internal building and unit data.
 
 ---
 
-# 🏢 Overview
+# рџЏў Overview
 
-E‑DIM Copilot is an AI assistant for residents of apartment buildings that:
+EвЂ‘DIM Copilot is an AI assistant for residents of apartment buildings that:
 
 * answers questions about the building
-* knows the user and their apartment
+* knows the user and their unit
 * integrates with Telegram
 * uses internal OSBB data (debts, announcements, docs)
 
@@ -20,27 +20,27 @@ Example:
 
 ---
 
-# 🧠 Architecture
+# рџ§  Architecture
 
 ## Components
 
-* **Telegram Bot** — user interface
-* **API (FastAPI)** — chat endpoint & orchestration
-* **Chat Gateway** — identity & linking logic
-* **Orchestrator** — builds Copilot response
-* **Context Manager** — loads user/building data
-* **LLM Client** — AI model integration (planned)
+* **Telegram Bot** вЂ” user interface
+* **API (FastAPI)** вЂ” chat endpoint & orchestration
+* **Chat Gateway** вЂ” identity & linking logic
+* **Orchestrator** вЂ” builds Copilot response
+* **Context Manager** вЂ” loads user/building data
+* **LLM Client** вЂ” AI model integration (planned)
 
 ## Data Stores
 
-* **Postgres** — users, identities, apartments
-* **MongoDB** — documents & FAQ
-* **Qdrant** — vector search
-* **Redis** — cache/session (planned)
+* **Postgres** вЂ” users, identities, units
+* **MongoDB** вЂ” documents & FAQ
+* **Qdrant** вЂ” vector search
+* **Redis** вЂ” cache/session (planned)
 
 ---
 
-# 📂 Project Structure
+# рџ“‚ Project Structure
 
 ```
 EDim/
@@ -66,15 +66,15 @@ README.md
 
 ---
 
-# 🚀 Quick Start (Podman)
+# рџљЂ Quick Start (Podman)
 
-## 1️⃣ Start Podman machine
+## 1пёЏвѓЈ Start Podman machine
 
 ```
 podman machine start
 ```
 
-## 2️⃣ Build & run
+## 2пёЏвѓЈ Build & run
 
 ```
 podman compose up --build
@@ -88,7 +88,7 @@ http://localhost:8000
 
 ---
 
-# 🤖 Telegram Bot
+# рџ¤– Telegram Bot
 
 Environment variables:
 
@@ -107,23 +107,23 @@ Bot flow:
 
 ---
 
-# 👤 Identity Model
+# рџ‘¤ Identity Model
 
 ```
-chat_identity → phone → user → apartment
+chat_identity в†’ phone в†’ user в†’ unit
 ```
 
 Tables:
 
 * users
 * chat_identities
-* apartments
+* units
 * buildings
-* user_apartments
+* user_units
 
 ---
 
-# 🔗 API Endpoints
+# рџ”— API Endpoints
 
 ## POST /chat
 
@@ -172,15 +172,15 @@ Phone linking
 
 ---
 
-# 🧪 Development
+# рџ§Є Development
 
-API auto‑reload enabled via:
+API autoвЂ‘reload enabled via:
 
 ```
 uvicorn --reload
 ```
 
-Telegram bot auto‑reload via:
+Telegram bot autoвЂ‘reload via:
 
 ```
 watchmedo auto-restart
@@ -188,9 +188,9 @@ watchmedo auto-restart
 
 ---
 
-# 🗺 Roadmap
+# рџ—є Roadmap
 
-* Apartment linking
+* Unit linking
 * Resident registry import
 * Context personalization
 * LLM integration
@@ -198,7 +198,7 @@ watchmedo auto-restart
 
 ---
 
-# 🏗 Tech Stack
+# рџЏ— Tech Stack
 
 * FastAPI
 * SQLAlchemy
@@ -210,6 +210,7 @@ watchmedo auto-restart
 
 ---
 
-# 📜 License
+# рџ“њ License
 
-Private project — E‑DIM
+Private project вЂ” EвЂ‘DIM
+

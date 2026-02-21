@@ -34,7 +34,7 @@ class User(Base):
         nullable=False,
     )
 
-    apartments: Mapped[List["UserApartment"]] = relationship(
+    units: Mapped[List["UserUnit"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )

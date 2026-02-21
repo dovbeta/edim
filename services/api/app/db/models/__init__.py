@@ -1,17 +1,17 @@
-from .apartment import Apartment
 from .building import Building
 from .chat_identity import ChatIdentity
 from .organization import Organization
 from .provider import Provider
+from .unit import Unit
 from .user import User
-from .user_apartment import UserApartment
+from .user_unit import UserUnit
 
 __all__ = [
-    "Apartment",
     "Building",
     "ChatIdentity",
     "User",
-    "UserApartment",
+    "UserUnit",
     "Organization",
     "Provider",
+    "Unit",
 ]

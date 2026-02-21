@@ -9,16 +9,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..base import Base
 
 
-class UserApartment(Base):
-    __tablename__ = "user_apartments"
+class UserUnit(Base):
+    __tablename__ = "user_units"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
 
-    apartment_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("apartments.id", ondelete="CASCADE"),
+    unit_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("units.id", ondelete="CASCADE"),
         primary_key=True,
     )
 
@@ -35,14 +35,14 @@ class UserApartment(Base):
     )
 
     user: Mapped["User"] = relationship(
-        back_populates="apartments"
+        back_populates="units"
     )
 
-    apartment: Mapped["Apartment"] = relationship(
-        back_populates="residents"
+    unit: Mapped["Unit"] = relationship(
+        back_populates="users"
     )
 
     __table_args__ = (
-        Index("idx_user_apartment_user", "user_id"),
-        Index("idx_user_apartment_apartment", "apartment_id"),
+        Index("idx_user_unit_user", "user_id"),
+        Index("idx_user_unit_unit", "unit_id"),
     )
