@@ -20,13 +20,16 @@ class User(Base):
 
     first_name: Mapped[Optional[str]] = mapped_column(String)
     last_name: Mapped[Optional[str]] = mapped_column(String)
-    username: Mapped[Optional[str]] = mapped_column(String)
+    middle_name: Mapped[Optional[str]] = mapped_column(String)
 
     phone: Mapped[Optional[str]] = mapped_column(
         String,
         unique=True,
         index=True,
     )
+    email: Mapped[Optional[str]] = mapped_column(String, index=True)
+
+    username: Mapped[Optional[str]] = mapped_column(String)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

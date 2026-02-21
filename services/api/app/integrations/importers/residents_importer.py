@@ -1,53 +1,82 @@
 from typing import List, Dict
 from uuid import UUID
+import math
 
 from sqlalchemy import select
 from db.session import AsyncSessionLocal
 from db.models import Unit, User, UserUnit
 
 
+def clean_str(v):
+    if v is None:
+        return None
+    if isinstance(v, float) and math.isnan(v):
+        return None
+    s = str(v).strip()
+    return s if s else None
+
+
 async def import_residents(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
         for item in items:
-            # item should have "phone", "first_name", "last_name", "external_unit_id"
-            phone = item.get("phone")
+
+            phone = clean_str(item.get("phone"))
             if not phone:
                 continue
 
-            # Find or create user
-            res = await session.execute(select(User).where(User.phone == phone))
+            first_name = clean_str(item.get("first_name"))
+            last_name = clean_str(item.get("last_name"))
+            middle_name = clean_str(item.get("middle_name"))
+            email = clean_str(item.get("email"))
+
+            # --- user ---
+            res = await session.execute(
+                select(User).where(User.phone == phone)
+            )
             user = res.scalars().first()
+
             if not user:
                 user = User(
                     phone=phone,
-                    first_name=item.get("first_name"),
-                    last_name=item.get("last_name"),
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_name=middle_name,
+                    email=email,
                 )
                 session.add(user)
-                await session.flush()
+                await session.flush()  # отримати user.id
+            else:
+                if not user.email and email:
+                    user.email = email
 
-            # Find unit
-            ext_unit_id = str(item.get("unit_id"))
-            res = await session.execute(select(Unit).where(Unit.external_id == ext_unit_id))
+            # --- unit ---
+            unit_number = clean_str(item.get("unit_number"))
+            if not unit_number:
+                continue
+
+            res = await session.execute(
+                select(Unit).where(Unit.personal_account == unit_number)
+            )
             unit = res.scalars().first()
             if not unit:
                 continue
 
-            # Link user to unit if not linked
+            # --- link ---
             res = await session.execute(
                 select(UserUnit).where(
                     UserUnit.user_id == user.id,
-                    Unit.id == unit.id
+                    UserUnit.unit_id == unit.id,
                 )
             )
-            # UserUnit has composite primary key (user_id, unit_id)
-            user_unit = res.scalars().first()
-            if not user_unit:
-                user_unit = UserUnit(
-                    user_id=user.id,
-                    unit_id=unit.id,
-                    role=item.get("role", "resident")
+            link = res.scalars().first()
+
+            if not link:
+                session.add(
+                    UserUnit(
+                        user_id=user.id,
+                        unit_id=unit.id,
+                        role=clean_str(item.get("role")) or "resident",
+                    )
                 )
-                session.add(user_unit)
 
         await session.commit()
