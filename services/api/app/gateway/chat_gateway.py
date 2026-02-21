@@ -1,4 +1,6 @@
+import re
 from sqlalchemy import select
+
 from db.models import ChatIdentity, User
 
 
@@ -8,9 +10,10 @@ class ChatGateway:
         self.session_factory = session_factory
         self.orchestrator = orchestrator
 
-    # ----------------------------
+    # =====================================================
     # TEXT MESSAGE
-    # ----------------------------
+    # =====================================================
+
     async def handle_message(
         self,
         channel: str,
@@ -26,11 +29,12 @@ class ChatGateway:
                 session, channel, external_user_id
             )
 
-            # 👇 новий користувач
+            # 🆕 новий користувач
             if not identity:
                 identity = ChatIdentity(
                     channel=channel,
                     external_id=external_user_id,
+                    verified=False,
                 )
                 session.add(identity)
                 await session.commit()
@@ -44,14 +48,14 @@ class ChatGateway:
                     ),
                 }
 
-            # 👇 identity є але не привʼязаний
-            if not identity.user_id:
+            # 📱 identity є але не привʼязаний або не verified
+            if not identity.user_id or not identity.verified:
                 return {
                     "need_phone": True,
                     "text": "Будь ласка, поділіться номером телефону 📱",
                 }
 
-            # 👇 нормальний сценарій
+            # ✅ нормальний сценарій
             answer = await self.orchestrator.handle(
                 message=message,
                 user_id=identity.user_id,
@@ -59,9 +63,10 @@ class ChatGateway:
 
             return {"text": answer}
 
-    # ----------------------------
+    # =====================================================
     # CONTACT
-    # ----------------------------
+    # =====================================================
+
     async def handle_contact(
         self,
         channel: str,
@@ -81,26 +86,32 @@ class ChatGateway:
                 identity = ChatIdentity(
                     channel=channel,
                     external_id=external_user_id,
+                    verified=False,
                 )
                 session.add(identity)
 
-            identity.phone = phone
+            # 📱 нормалізація телефону
+            phone_norm = self._normalize_phone(phone)
+            identity.phone = phone_norm
 
-            # 🔎 шукаємо IDKit користувача по телефону
-            user = await self._find_user_by_phone(session, phone)
+            # 🔎 пошук користувача
+            user = await self._find_user_by_phone(session, phone_norm)
 
             if user:
                 identity.user_id = user.id
                 identity.verified = True
+
                 await session.commit()
 
                 return {
                     "text": (
                         f"Дякуємо, {user.first_name or ''}! 🙌\n"
-                        "Ми знайшли вашу квартиру у системі."
+                        "Ми знайшли вас у системі ОСББ."
                     )
                 }
 
+            # не знайдено
+            identity.verified = False
             await session.commit()
 
             return {
@@ -111,9 +122,10 @@ class ChatGateway:
                 )
             }
 
-    # ----------------------------
+    # =====================================================
     # HELPERS
-    # ----------------------------
+    # =====================================================
+
     async def _get_identity(self, session, channel, external_id):
         q = select(ChatIdentity).where(
             ChatIdentity.channel == channel,
@@ -126,3 +138,18 @@ class ChatGateway:
         q = select(User).where(User.phone == phone)
         res = await session.execute(q)
         return res.scalar_one_or_none()
+
+    # =====================================================
+    # PHONE NORMALIZATION (UA)
+    # =====================================================
+
+    def _normalize_phone(self, phone: str) -> str:
+        digits = re.sub(r"\D", "", phone)
+
+        if digits.startswith("0"):
+            digits = "38" + digits
+
+        if not digits.startswith("38"):
+            digits = "38" + digits
+
+        return "+" + digits

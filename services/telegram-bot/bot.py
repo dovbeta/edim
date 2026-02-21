@@ -8,7 +8,6 @@ from telegram.ext import (
     filters,
 )
 
-# BASE URL API
 BASE_URL = os.getenv("COPILOT_API_URL", "http://api:8000")
 
 CHAT_URL = BASE_URL + "/chat"
@@ -17,14 +16,16 @@ CONTACT_URL = BASE_URL + "/chat/contact"
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 
+# =====================================================
+# TEXT MESSAGE
+# =====================================================
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     user = msg.from_user
 
     if not msg or not msg.text:
         return
-
-    print("USER MSG:", msg.text)
 
     payload = {
         "channel": "telegram",
@@ -35,29 +36,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "username": user.username,
     }
 
-    data = {}
-
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(CHAT_URL, json=payload)
+            r.raise_for_status()
 
-            print("API status:", r.status_code)
-            print("API response:", r.text)
-
-            if "application/json" in r.headers.get("content-type", ""):
-                try:
-                    data = r.json()
-                except Exception:
-                    data = {}
-            else:
-                print("Non-JSON response from API")
+            data = r.json() if "application/json" in r.headers.get("content-type", "") else {}
 
     except Exception as e:
         print("API request failed:", e)
         await msg.reply_text("⚠️ Copilot API недоступний")
         return
 
-    # Phone request flow
+    # 📱 API просить телефон
     if data.get("need_phone"):
         button = KeyboardButton(
             text="📱 Поділитися номером",
@@ -71,22 +62,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Normal reply
+    # 💬 звичайна відповідь
     reply = (
-        data.get("response")
+        data.get("text")
         or data.get("answer")
-        or data.get("text")
+        or data.get("response")
         or "⚠️ Copilot не надав відповіді"
     )
 
     await msg.reply_text(reply)
 
 
+# =====================================================
+# CONTACT
+# =====================================================
+
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     tg_user = update.effective_user
     contact = msg.contact
-    print("CONTACT:", contact)
 
     if not contact:
         return
@@ -103,20 +97,24 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(CONTACT_URL, json=payload)
+            r.raise_for_status()
 
-            print("CONTACT status:", r.status_code)
-            print("CONTACT response:", r.text)
+            data = r.json() if "application/json" in r.headers.get("content-type", "") else {}
 
     except Exception as e:
         print("Contact send failed:", e)
         await msg.reply_text("⚠️ Помилка передачі номера")
         return
 
-    await msg.reply_text(
-        "Дякуємо! 🙌\n"
-        "Ми перевіряємо інформацію про вашу нерухомість."
-    )
+    # ✅ показуємо текст API (а не хардкод)
+    reply = data.get("text") or "Дякуємо! 🙌"
 
+    await msg.reply_text(reply)
+
+
+# =====================================================
+# BOOT
+# =====================================================
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
