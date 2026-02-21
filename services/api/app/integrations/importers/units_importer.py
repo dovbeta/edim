@@ -9,42 +9,60 @@ from db.models import Unit, Building
 async def import_units(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
         for item in items:
-            ext_b_id = str(item.get("building_external_id"))
+            ext_b_id = item.get("building_external_id")
+            number = item.get("number")
 
-            if not ext_b_id:
+            if not ext_b_id or not number:
                 continue
 
+            # ---------- find building ----------
             b_result = await session.execute(
-                select(Building).where(Building.external_id == ext_b_id)
+                select(Building).where(Building.external_id == str(ext_b_id))
             )
             building = b_result.scalars().first()
 
             if not building:
                 continue
 
-            number = str(item.get("number"))
             unit_type = item.get("type", "apartment")
-            external_id = str(item.get("external_id"))
+            external_id = item.get("external_id")
 
+            # ---------- find existing unit ----------
             existing_result = await session.execute(
                 select(Unit).where(
                     Unit.building_id == building.id,
-                    Unit.number == number,
-                    Unit.unit_type == unit_type
+                    Unit.number == str(number),
+                    Unit.unit_type == unit_type,
                 )
             )
             unit = existing_result.scalars().first()
 
-            if unit:
-                unit.external_id = external_id
-            else:
-                session.add(
-                    Unit(
-                        number=number,
-                        building_id=building.id,
-                        unit_type=unit_type,
-                        external_id=external_id,
-                    )
+            # ---------- create ----------
+            if not unit:
+                unit = Unit(
+                    number=str(number),
+                    building_id=building.id,
+                    unit_type=unit_type,
+                    external_id=str(external_id) if external_id else None,
                 )
+                session.add(unit)
+
+            # ---------- update fields ----------
+            unit.external_id = str(external_id) if external_id else unit.external_id
+
+            unit.section = item.get("section")
+            unit.floor = item.get("floor")
+
+            unit.area_total = item.get("area_total")
+            unit.area_living = item.get("area_living")
+            unit.area_heating = item.get("area_heating")
+
+            unit.rooms = item.get("rooms")
+            unit.personal_account = item.get("personal_account")
+
+            unit.residents_registered = item.get("residents_registered")
+            unit.residents_living = item.get("residents_living")
+
+            unit.is_debtor = item.get("is_debtor")
 
         await session.commit()

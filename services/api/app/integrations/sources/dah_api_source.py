@@ -26,10 +26,11 @@ class DahAPISource(APISource):
                 {
                     "external_id": a.get("id"),
                     "number": apartment_num,
-                    "type": "apartment",
-                    "area": ad.get("size"),
+                    "type": ad.get("apartmentType"),
+                    "area_total": ad.get("size"),
                     "floor": ad.get("floor"),
                     "section": ad.get("sectionNumber"),
+                    "rooms": ad.get("rooms"),
                     "building_external_id": str(building_num) if building_num else None,
                     "personal_account": a.get("personalAccountNumber"),
                 }
