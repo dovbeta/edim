@@ -76,6 +76,10 @@ class ContextManager:
                 "unit_id": str(unit.id),
                 "unit_number": unit.personal_account,
                 "unit_type": unit.unit_type,
+                "floor": unit.floor,
+                "section": unit.section,
+                "rooms": unit.rooms,
+                "area_total": unit.area_total,
                 "role": link.role or "resident",
                 "building": {
                     "id": str(building.id) if building else None,
