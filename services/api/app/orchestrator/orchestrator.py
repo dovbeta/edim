@@ -67,7 +67,9 @@ class Orchestrator:
                 plan.params,
             )
 
-        if plan.intent.startswith("search_") and len(data) > 3:
+        print(data)
+
+        if plan.intent.startswith("search_") and len(data or []) > 3:
             raise ValueError("Neighbor lookup returned too many results")
 
         # 6 respond
@@ -76,7 +78,9 @@ class Orchestrator:
             context=context,
             data=data,
             history=history,
+            plan=plan,
         )
+        print(answer)
 
         # 7 save assistant
         await self.chat_history.save_assistant_message(

@@ -6,6 +6,7 @@ from typing import Optional
 class QueryPlan:
     intent: str
     needs_sql: bool
+    needs_more_info: bool = False
     sql: Optional[str] = None
     params: Optional[dict] = None
     explanation: Optional[str] = None

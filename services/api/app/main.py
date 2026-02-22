@@ -14,7 +14,8 @@ from chat_history.repository import ChatHistoryRepository
 from chat_history.service import ChatHistoryService
 
 # llm
-from llm_client import GeminiClient
+from llm.gemini import GeminiClient
+from policy.prompt_builder import EDIMPromptBuilder
 from planning.plan_logger import PlanLogger
 
 # planning
@@ -65,7 +66,9 @@ chat_history = ChatHistoryService(chat_history_repo)
 # LLM
 # -------------------------------------------------
 
-llm_client = GeminiClient()
+llm_client = GeminiClient(
+    system_prompt=EDIMPromptBuilder.BASE_SYSTEM
+)
 
 
 # -------------------------------------------------
@@ -102,6 +105,7 @@ validator = SQLValidator(
         "buildings",
         "organizations",
         "vehicles",
+        "user_organizations",
         "invoices",
         "payments",
     }
@@ -114,7 +118,6 @@ sql_executor = SQLExecutor(session_factory=AsyncSessionLocal)
 # -------------------------------------------------
 
 responder = Responder(llm=llm_client)
-
 
 # -------------------------------------------------
 # ORCHESTRATOR (NEW PIPELINE)

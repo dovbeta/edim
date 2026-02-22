@@ -1,8 +1,9 @@
 from db.models.plan import QueryPlan
+from llm.base import LLMClient
 
 
 class Planner:
-    def __init__(self, llm, schema, prompt_builder):
+    def __init__(self, llm: LLMClient, schema, prompt_builder):
         self.llm = llm
         self.schema = schema
         self.prompt_builder = prompt_builder
@@ -22,6 +23,7 @@ class Planner:
         return QueryPlan(
             intent=result["intent"],
             needs_sql=result["needs_sql"],
+            needs_more_info=result.get("needs_more_info", False),
             sql=result.get("sql"),
             params=result.get("params"),
             explanation=result.get("explanation"),

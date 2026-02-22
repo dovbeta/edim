@@ -1,3 +1,6 @@
+from policy.edim_policy import EDIMAccessPolicy
+
+
 class PlannerPromptBuilder:
     """
     Builds the planning prompt for LLM.
@@ -19,6 +22,9 @@ class PlannerPromptBuilder:
         schema: str | None = None,
     ) -> str:
         schema_text = schema or self.schema
+
+        role = EDIMAccessPolicy.resolve_role(context)
+        policy = EDIMAccessPolicy.get_policy(role)
 
         user = context.get("user", {})
         properties = context.get("properties", [])
@@ -68,45 +74,9 @@ You are EDIM Copilot SQL planner.
 Your task:
 Understand the user question and decide if database data is required.
 
-User may ask about:
-- their own data
-- their units
-- other residents in the same building
-- vehicles in the building
-- statistics of the building
-- debts / apartments / counts in the building
+User role: {policy.role_name}
 
-ACCESS SCOPE RULES:
-- User is allowed to see ANY data within their buildings
-- User is NOT allowed to see data from other buildings
-- Always filter by building_id in user buildings
-- User is NOT limited to their own unit
-
-NEIGHBOR DATA ACCESS POLICY:
-
-User may access data about OTHER residents in the same building
-ONLY when searching for a specific target.
-
-Allowed neighbor queries:
-- resident by apartment number
-- resident by vehicle plate
-- vehicle by apartment
-- contact of apartment owner
-- who owns vehicle X
-
-Forbidden:
-- list of residents
-- all neighbors
-- all vehicles in building
-- all contacts
-- any bulk list
-
-SQL constraints for neighbor data:
-- MUST include specific filter:
-  apartment number OR license plate OR person name
-- MUST include building_id filter
-- MUST NOT return more than one household
-- MUST NOT return bulk lists
+{policy.to_str()}
 
 SQL RULES:
 - ONLY SELECT queries
@@ -116,16 +86,29 @@ SQL RULES:
 - NEVER hardcode user_id or building_id
 - Aggregations MUST be aliased as value
 - If filtering by multiple values use: column = ANY(:param)
+- Car plate searches MUST use partial match with ILIKE and wildcards
+- If searching by an identifier (license_plate, phone, unit_number, document, etc),
+  the SELECT MUST include that full identifier column from the database.
 
 If data is required:
 Return SQL and params.
 
+If you cannot fulfill the request because you need more information from the user (e.g. which unit, which person, or missing car plate), set needs_more_info to true and explain what is missing.
+
 Return JSON:
 - intent: snake_case
 - needs_sql: true/false
+- needs_more_info: true/false
 - sql: SQL or null
 - params: dict or null
-- explanation: short
+- explanation: short explanation for the system or what information is missing from the user
+
+IDENTIFIER RESPONSE RULE:
+When user searches by partial identifier:
+- SQL MUST use partial match (ILIKE)
+- SQL MUST SELECT the full identifier column
+- Response MUST display the full identifier from DB
+- NEVER echo only the user fragment
 
 Database schema:
 {schema_text}
