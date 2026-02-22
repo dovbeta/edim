@@ -3,13 +3,21 @@ class SQLValidator:
         self.allowed_tables = allowed_tables
 
     def validate(self, sql: str):
-        s = sql.lower().strip()
+        s = sql.lower()
 
         if not s.startswith("select"):
             raise ValueError("Only SELECT allowed")
 
-        for forbidden in ["insert", "update", "delete", "drop"]:
-            if forbidden in s:
-                raise ValueError("Mutation not allowed")
+        forbidden_bulk_patterns = [
+            "from users",
+            "from vehicles",
+            "from user_units",
+        ]
 
-        # тут можна підключити sqlglot/pglast
+        # allow if specific filters exist
+        has_specific_filter = any(
+            k in s for k in ["license_plate", "personal_account", "first_name", "last_name"]
+        )
+
+        if any(p in s for p in forbidden_bulk_patterns) and not has_specific_filter:
+            raise ValueError("Bulk neighbor queries are forbidden")

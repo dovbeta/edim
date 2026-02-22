@@ -67,6 +67,9 @@ class Orchestrator:
                 plan.params,
             )
 
+        if plan.intent.startswith("search_") and len(data) > 3:
+            raise ValueError("Neighbor lookup returned too many results")
+
         # 6 respond
         answer = await self.responder.respond(
             message=message,

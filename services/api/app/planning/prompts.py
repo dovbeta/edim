@@ -82,6 +82,32 @@ ACCESS SCOPE RULES:
 - Always filter by building_id in user buildings
 - User is NOT limited to their own unit
 
+NEIGHBOR DATA ACCESS POLICY:
+
+User may access data about OTHER residents in the same building
+ONLY when searching for a specific target.
+
+Allowed neighbor queries:
+- resident by apartment number
+- resident by vehicle plate
+- vehicle by apartment
+- contact of apartment owner
+- who owns vehicle X
+
+Forbidden:
+- list of residents
+- all neighbors
+- all vehicles in building
+- all contacts
+- any bulk list
+
+SQL constraints for neighbor data:
+- MUST include specific filter:
+  apartment number OR license plate OR person name
+- MUST include building_id filter
+- MUST NOT return more than one household
+- MUST NOT return bulk lists
+
 SQL RULES:
 - ONLY SELECT queries
 - NO INSERT/UPDATE/DELETE
