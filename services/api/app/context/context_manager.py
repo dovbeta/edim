@@ -6,6 +6,7 @@ import psycopg2
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from db.models.user_organization import UserOrganization
 from db.session import AsyncSessionLocal
 from db.models import UserUnit, Unit, Building, Organization, User, Vehicle
 
@@ -26,11 +27,13 @@ class ContextManager:
         user = await self._get_user(user_id)
         properties = await self._get_user_properties(user_id)
         vehicles = await self._get_user_vehicles(user_id)
+        org_roles = await self._get_user_org_roles(user_id)
 
         return {
             "user": user,
             "properties": properties,
             "vehicles": vehicles,
+            "org_roles": org_roles,
         }
 
     async def _get_user(self, user_id) -> dict:
@@ -110,4 +113,27 @@ class ContextManager:
             }
             for v in vehicles
         ]
+
+    async def _get_user_org_roles(self, user_id):
+        async with AsyncSessionLocal() as session:
+            res = await session.execute(
+                select(UserOrganization)
+                .where(UserOrganization.user_id == user_id)
+                .options(
+                    selectinload(UserOrganization.organization)
+                )
+            )
+            rows = res.scalars().all()
+
+        roles = []
+
+        for r in rows:
+            org = r.organization
+            roles.append({
+                "organization_id": str(r.organization_id),
+                "organization_name": getattr(org, "name", None) if org else None,
+                "role": r.role,
+            })
+
+        return roles
 

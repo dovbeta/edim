@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from db.session import AsyncSessionLocal
 
 # context
-from context_manager import ContextManager
+from context.context_manager import ContextManager
 from context.context_provider import ContextProvider
 
 # chat history

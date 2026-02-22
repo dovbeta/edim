@@ -6,6 +6,7 @@ from .unit import Unit
 from .user import User
 from .user_unit import UserUnit
 from .vehicle import Vehicle
+from .user_organization import UserOrganization
 
 __all__ = [
     "Building",
@@ -16,4 +17,5 @@ __all__ = [
     "Provider",
     "Unit",
     "Vehicle",
+    "UserOrganization",
 ]
