@@ -7,12 +7,13 @@ from .provider_loader import load_provider_source
 from .importers.units_importer import import_units
 from .importers.buildings_importer import import_buildings
 from .importers.residents_importer import import_residents
+from .importers.vehicles_importer import import_vehicles
 
 logger = logging.getLogger(__name__)
 
 async def run_provider_import(provider_id, include=None):
     if include is None:
-        include = ["buildings", "units", "residents", "accruals"]
+        include = ["buildings", "units", "residents", "vehicles", "accruals"]
 
     async with AsyncSessionLocal() as session:
         provider = await session.get(Provider, provider_id)
@@ -36,6 +37,10 @@ async def run_provider_import(provider_id, include=None):
         if "residents" in include:
             residents = await source.load_residents()
             await import_residents(provider.id, residents)
+
+        if "vehicles" in include:
+            vehicles = await source.load_vehicles()
+            await import_vehicles(vehicles)
 
         if "accruals" in include:
             # TODO: implement accruals importer

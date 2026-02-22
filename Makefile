@@ -160,6 +160,6 @@ help:
 	@echo "  make db-reset      - reset database"
 	@echo "  make seed          - seed data"
 	@echo ""
-	@echo "  make import-provider PROVIDER=<uuid> [INCLUDE=\"units buildings\"]"
+	@echo "  make import-provider PROVIDER=<uuid> [INCLUDE=\"units buildings residents vehicles\"]"
 	@echo "  make import-all"
 	@echo ""

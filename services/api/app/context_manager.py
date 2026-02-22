@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from db.session import AsyncSessionLocal
-from db.models import UserUnit, Unit, Building, Organization, User
+from db.models import UserUnit, Unit, Building, Organization, User, Vehicle
 
 
 class ContextManager:
@@ -25,10 +25,12 @@ class ContextManager:
     async def build(self, user_id, message, chat_history=None):
         user = await self._get_user(user_id)
         properties = await self._get_user_properties(user_id)
+        vehicles = await self._get_user_vehicles(user_id)
 
         return {
             "user": user,
             "properties": properties,
+            "vehicles": vehicles,
         }
 
     async def _get_user(self, user_id) -> dict:
@@ -92,4 +94,20 @@ class ContextManager:
             })
 
         return properties
+
+    async def _get_user_vehicles(self, user_id):
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Vehicle).where(Vehicle.user_id == user_id)
+            )
+            vehicles = result.scalars().all()
+
+        return [
+            {
+                "id": str(v.id),
+                "model": v.model,
+                "license_plate": v.license_plate,
+            }
+            for v in vehicles
+        ]
 

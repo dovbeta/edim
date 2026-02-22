@@ -147,3 +147,35 @@ class DahAPISource(APISource):
             )
 
         return residents
+
+    async def load_vehicles(self) -> List[Dict]:
+        file_url = self.config.get("vehicles_file_url")
+        if not file_url:
+            return []
+
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            r = await client.get(file_url)
+            r.raise_for_status()
+
+        df = pd.read_excel(
+            io.BytesIO(r.content),
+            engine="openpyxl",
+            header=2,
+        )
+
+        df["ПІП"] = df["ПІП"].ffill()
+        df["Телефон"] = df["Телефон"].ffill()
+
+        vehicles: List[Dict] = []
+
+        for _, row in df.iterrows():
+            vehicles.append(
+                {
+                    "full_name": row.get("ПІП"),
+                    "phone": row.get("Телефон"),
+                    "model": row.get("Модель"),
+                    "license_plate": row.get("Номер"),
+                }
+            )
+
+        return vehicles
