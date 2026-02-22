@@ -3,46 +3,138 @@ import os
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from context_manager import ContextManager
 from db.session import AsyncSessionLocal
-from gateway.chat_gateway import ChatGateway
-from llm_client import GeminiClient
-from orchestrator import Orchestrator
-from core.chat_request import ChatRequest
-from core.contact_request import ContactRequest
+
+# context
+from context_manager import ContextManager
+from context.context_provider import ContextProvider
+
+# chat history
 from chat_history.repository import ChatHistoryRepository
 from chat_history.service import ChatHistoryService
 
+# llm
+from llm_client import GeminiClient
+from planning.plan_logger import PlanLogger
+
+# planning
+from planning.planner import Planner
+
+# execution
+from execution.sql_validator import SQLValidator
+from execution.sql_executor import SQLExecutor
+from planning.prompts import PlannerPromptBuilder
+from planning.sql_schema import SQL_SCHEMA
+
+# response
+from response.responder import Responder
+
+# orchestrator + gateway
+from orchestrator.orchestrator import Orchestrator
+from gateway.chat_gateway import ChatGateway
+
+# api models
+from core.chat_request import ChatRequest
+from core.contact_request import ContactRequest
+
+
 app = FastAPI(title="E-Dim Copilot API")
 
+
 # -------------------------------------------------
-# DEPENDENCIES
+# DB / SESSION
 # -------------------------------------------------
 
 def get_session_factory():
     return AsyncSessionLocal
 
 
-# 🧠 Mongo Chat History
+# -------------------------------------------------
+# MONGO CHAT HISTORY
+# -------------------------------------------------
+
 mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
 mongo_db = mongo_client[os.getenv("MONGO_DB", "edim")]
 mongo_messages = mongo_db["messages"]
 
 chat_history_repo = ChatHistoryRepository(mongo_messages)
 chat_history = ChatHistoryService(chat_history_repo)
+
+
+# -------------------------------------------------
+# LLM
+# -------------------------------------------------
+
 llm_client = GeminiClient()
+
+
+# -------------------------------------------------
+# CONTEXT
+# -------------------------------------------------
+
 context_manager = ContextManager()
+context_provider = ContextProvider(context_manager)
 
 
-# 🤖 Orchestrator
-orchestrator = Orchestrator(
+# -------------------------------------------------
+# PLANNER
+# -------------------------------------------------
+
+planner_prompt_builder = PlannerPromptBuilder(schema=SQL_SCHEMA)
+
+planner = Planner(
     llm=llm_client,
-    context_manager=context_manager,
-    chat_history=chat_history
+    schema=SQL_SCHEMA,
+    prompt_builder=planner_prompt_builder,
+)
+planner_logs = mongo_db["planner_logs"]
+plan_logger = PlanLogger(planner_logs)
+
+
+# -------------------------------------------------
+# SQL EXECUTION
+# -------------------------------------------------
+
+validator = SQLValidator(
+    allowed_tables={
+        "users",
+        "units",
+        "buildings",
+        "organizations",
+        "vehicles",
+        "invoices",
+        "payments",
+    }
+)
+sql_executor = SQLExecutor(session_factory=AsyncSessionLocal)
+
+
+# -------------------------------------------------
+# RESPONDER
+# -------------------------------------------------
+
+responder = Responder(llm=llm_client)
+
+
+# -------------------------------------------------
+# ORCHESTRATOR (NEW PIPELINE)
+# -------------------------------------------------
+
+orchestrator = Orchestrator(
+    chat_history=chat_history,
+    context_provider=context_provider,
+    planner=planner,
+    validator=validator,
+    executor=sql_executor,
+    responder=responder,
+    plan_logger=plan_logger,
 )
 
 
-# 🚪 Gateway
+# -------------------------------------------------
+# GATEWAY
+# -------------------------------------------------
+
 gateway = ChatGateway(
     session_factory=get_session_factory(),
     orchestrator=orchestrator,
