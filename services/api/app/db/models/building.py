@@ -20,6 +20,12 @@ class Building(Base):
 
     name: Mapped[str] = mapped_column(String, nullable=False)
 
+    address: Mapped[str] = mapped_column(   # ← NEW
+        String,
+        nullable=True,
+        index=True,
+    )
+
     external_id: Mapped[str] = mapped_column(
         String,
         nullable=True,
