@@ -27,16 +27,19 @@ Example:
 * **Telegram Bot** — user interface
 * **API (FastAPI)** — chat endpoint & orchestration
 * **Chat Gateway** — identity & linking logic
-* **Orchestrator** — builds Copilot response
+* **Orchestrator** — handles the main chat pipeline
 * **Context Manager** — loads user/building data
+* **Planner** — LLM-based agent that decides on intent and SQL generation
+* **SQL Validator & Executor** — ensures safe execution of generated queries
+* **Responder** — LLM-based agent that formats the final answer
 * **Integrations Runner** — imports data from external Providers
-* **LLM Client** — AI model integration (planned)
+* **LLM Client** — Gemini integration (Google AI)
 
 ## Data Stores
 
-* **Postgres** — users, identities, units, buildings, organizations, providers
-* **MongoDB** — documents & FAQ
-* **Qdrant** — vector search
+* **Postgres** — structured data (users, units, buildings, organizations, vehicles)
+* **MongoDB** — chat history, messages, and planner logs
+* **Qdrant** — vector search (for RAG/documents - planned/integration in progress)
 * **Redis** — cache/session (planned)
 
 ---
@@ -45,15 +48,16 @@ Example:
 
 ```
 EDim/
-
 services/
   api/
     app/
       main.py
-      orchestrator.py
-      context_manager.py
-      llm_client.py
-      core/
+      orchestrator/
+      planning/
+      execution/
+      response/
+      context/
+      llm/
       db/
         models/
       gateway/
@@ -61,14 +65,8 @@ services/
         importers/
         sources/
         cli/
-
   telegram-bot/
     bot.py
-    requirements.txt
-
-docker-compose.yml
-
-README.md
 ```
 
 ---
@@ -114,6 +112,17 @@ Bot flow:
 
 ---
 
+# 🤖 AI Logic (Planning & Execution)
+
+The Copilot uses a two-step approach for handling user queries:
+
+1. **Planner:** The LLM receives the user's message, conversation history, and the database schema. It decides if the request needs data from the database. If so, it generates a safe, parameterized SQL query.
+2. **Executor & Responder:** The SQL query is validated against a whitelist of tables and then executed. The resulting data is passed back to the LLM (Responder), which crafts a human-friendly response based on the actual data found.
+
+This ensures the AI doesn't hallucinate data and strictly follows building-level access policies.
+
+---
+
 # 👤 Identity Model
 
 ```
@@ -129,6 +138,8 @@ Tables:
 * users
 * chat_identities
 * user_units (m2m linking)
+* vehicles (linked to user)
+* user_organizations
 
 ---
 
@@ -223,21 +234,23 @@ Available options for `--include`: `buildings`, `units`, `residents`, `accruals`
 
 * ✅ Unit linking (formerly Apartment)
 * ✅ Resident registry import (Providers framework)
-* Context personalization
-* LLM integration
-* Resident Copilot MVP
+* ✅ LLM integration (Gemini)
+* ✅ SQL-based planning and execution
+* ✅ Chat history storage (MongoDB)
+* 🚧 Resident Copilot MVP (in progress)
+* 🚧 Context personalization (improving)
+* 📅 Documents search (RAG)
+* 📅 Multi-language support
 
 ---
 
 # 🏗 Tech Stack
 
-* FastAPI
-* SQLAlchemy
-* Postgres
-* MongoDB
-* Qdrant
-* Telegram Bot API
-* Podman / Docker
+* **Backend:** FastAPI, SQLAlchemy (Async)
+* **Database:** Postgres (Data), MongoDB (History/Logs)
+* **LLM:** Google Gemini API
+* **Deployment:** Docker / Podman
+* **Bot:** Aiogram (Telegram)
 
 ---
 
