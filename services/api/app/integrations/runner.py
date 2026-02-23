@@ -8,12 +8,13 @@ from .importers.units_importer import import_units
 from .importers.buildings_importer import import_buildings
 from .importers.residents_importer import import_residents
 from .importers.vehicles_importer import import_vehicles
+from .importers.debts_importer import import_debts
 
 logger = logging.getLogger(__name__)
 
 async def run_provider_import(provider_id, include=None):
     if include is None:
-        include = ["buildings", "units", "residents", "vehicles", "accruals"]
+        include = ["buildings", "units", "residents", "vehicles", "debts"]
 
     async with AsyncSessionLocal() as session:
         provider = await session.get(Provider, provider_id)
@@ -42,9 +43,13 @@ async def run_provider_import(provider_id, include=None):
             vehicles = await source.load_vehicles()
             await import_vehicles(vehicles)
 
-        if "accruals" in include:
-            # TODO: implement accruals importer
-            logger.info("Accruals import requested but not yet implemented")
+        if "debts" in include:
+            try:
+                debts = await source.load_unit_debts()
+                await import_debts(provider.id, debts)
+                logger.info(f"Imported {len(debts)} unit debts")
+            except AttributeError:
+                logger.info("Source does not support load_unit_debts, skipping debts import")
 
         async with AsyncSessionLocal() as session:
             # Re-fetch or use session.merge if needed, but we just want to update last_import_at

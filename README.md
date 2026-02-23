@@ -226,7 +226,7 @@ Selective import:
 python services/api/app/integrations/cli/import_provider.py --provider-id <id> --include buildings --include units
 ```
 
-Available options for `--include`: `buildings`, `units`, `residents`, `accruals`.
+Available options for `--include`: `buildings`, `units`, `residents`, `debts`.
 
 ---
 

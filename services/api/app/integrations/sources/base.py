@@ -15,5 +15,11 @@ class BaseSource(ABC):
     async def load_residents(self) -> List[Any]:
         return []
 
+    async def load_vehicles(self) -> List[Any]:
+        return []
+
+    async def load_unit_debts(self) -> List[Any]:
+        return []
+
     async def close(self):
         pass

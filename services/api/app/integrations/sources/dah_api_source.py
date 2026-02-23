@@ -2,8 +2,11 @@ import io
 import pandas as pd
 import httpx
 import re
+import zipfile
 from typing import List, Dict
 from .api_source import APISource
+from datetime import datetime
+from utils.gdrive import GoogleDriveClient
 
 def parse_premises(text: str):
     if not text:
@@ -179,3 +182,59 @@ class DahAPISource(APISource):
             )
 
         return vehicles
+
+    async def load_unit_debts(self) -> List[Dict]:
+        folder_id = self.config.get("debts_folder_id")
+        service_account_info = self.config.get("google_service_account_json")
+
+        if not folder_id or not service_account_info:
+            return []
+
+
+        gdrive = GoogleDriveClient(service_account_info)
+        files = gdrive.list_files(folder_id, q="name contains '.zip'")
+
+        if not files:
+            return []
+
+        # List is already sorted by createdTime desc
+        latest_file = files[0]
+        content = gdrive.download_file(latest_file["id"])
+
+
+        z = zipfile.ZipFile(io.BytesIO(content))
+        # Find excel file in zip
+        excel_file = None
+        for name in z.namelist():
+            if name.endswith(".xlsx") or name.endswith(".xls"):
+                excel_file = name
+                break
+
+        if not excel_file:
+            return []
+
+        with z.open(excel_file) as f:
+            df = pd.read_excel(f, engine="openpyxl")
+
+        # 🔹 нормалізуємо назви колонок
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # 🔹 очікувані колонки
+        if "LS" not in df.columns or "SUM" not in df.columns:
+            raise ValueError("Debt file must contain LS and SUM columns")
+
+        # 🔹 приводимо типи
+        df["LS"] = df["LS"].astype(str)
+        df["SUM"] = pd.to_numeric(df["SUM"], errors="coerce").fillna(0)
+
+        # 🔹 агрегуємо борг по особовому рахунку
+        agg = (
+            df.groupby("LS", as_index=False)["SUM"]
+            .sum()
+            .rename(columns={"LS": "personal_account", "SUM": "debt_total"})
+        )
+
+        # 🔹 конвертуємо в список dict
+        debts = agg.to_dict(orient="records")
+
+        return debts

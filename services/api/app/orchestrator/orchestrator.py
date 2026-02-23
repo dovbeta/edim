@@ -79,8 +79,6 @@ class Orchestrator:
                 print(f"Validation/Execution error: {e}")
                 error = str(e)
 
-        print(data)
-
         # 6 respond
         answer = await self.responder.respond(
             message=message,
@@ -90,7 +88,6 @@ class Orchestrator:
             plan=plan,
             error=error,
         )
-        print(answer)
 
         # 7 save assistant
         await self.chat_history.save_assistant_message(

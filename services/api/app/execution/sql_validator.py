@@ -20,7 +20,7 @@ class SQLValidator:
 
         # allow if specific filters exist
         has_specific_filter = any(
-            k in s for k in ["license_plate", "personal_account", "first_name", "last_name"]
+            k in s for k in ["license_plate", "personal_account", "first_name", "last_name", "debt_total"]
         )
 
         if any(p in s for p in forbidden_bulk_patterns) and not has_specific_filter:

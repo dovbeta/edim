@@ -23,6 +23,7 @@ Table units:
 - section text
 - rooms int
 - area_total numeric
+- debt_total numeric
 - building_id uuid
 
 Table user_units:

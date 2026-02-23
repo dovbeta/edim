@@ -54,8 +54,9 @@ User:
         if properties:
             props_lines = []
             for p in properties:
+                debt_info = f", debt: {p.get('debt_total')}" if p.get('debt_total') is not None else ""
                 props_lines.append(
-                    f"- unit {p.get('unit_number')} ({p.get('unit_type')}), building: {p.get('building', {}).get('address')}"
+                    f"- unit {p.get('unit_number')} ({p.get('unit_type')}), building: {p.get('building', {}).get('address')}{debt_info}"
                 )
             properties_text = "User properties:\n" + "\n".join(props_lines)
 
@@ -90,11 +91,14 @@ SQL RULES:
 - If searching by an identifier (license_plate, phone, unit_number, document, etc),
   the SELECT MUST include that full identifier column from the database.
   
-ORGANIZATION FILTER RULE:
+TENANT SCOPING RULE:
 
-If organization_id is available in context (org_roles or properties),
-ALWAYS filter directly by:
-buildings.organization_id = :organization_id
+Organization and tenant filtering are automatically applied by the system.
+DO NOT include organization_id in SQL.
+DO NOT include organization_id in params.
+DO NOT filter by organization manually.
+
+Always write queries as if data is already limited to the user's organization.
 
 DO NOT determine current user's organization via SQL joins or subqueries.
 
@@ -123,8 +127,8 @@ When user searches by partial identifier:
 - NEVER echo only the user fragment
 
 IMPORTANT:
-To determine user's organization, use property chain:
-users → user_units → units → buildings → organizations.
+User access scope (organization, buildings, properties) is already enforced by the system.
+Never attempt to determine tenant or organization in SQL.
 
 DO NOT use user_organizations to determine membership.
 user_organizations only stores roles like board/manager.
