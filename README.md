@@ -117,9 +117,31 @@ Bot flow:
 The Copilot uses a two-step approach for handling user queries:
 
 1. **Planner:** The LLM receives the user's message, conversation history, and the database schema. It decides if the request needs data from the database. If so, it generates a safe, parameterized SQL query.
-2. **Executor & Responder:** The SQL query is validated against a whitelist of tables and then executed. The resulting data is passed back to the LLM (Responder), which crafts a human-friendly response based on the actual data found.
+2. **Executor & Responder:** The SQL query is validated against a whitelist of tables and security policies. If validation fails (e.g., unauthorized bulk access), the error is passed back to the LLM (Responder), which crafts a polite explanation for the user. If validation passes, the results are used to generate the final response.
 
-This ensures the AI doesn't hallucinate data and strictly follows building-level access policies.
+### 🛡️ Security & Privacy Decisions
+- **Tenant Isolation:** A `TenantScope` filter is automatically applied to all generated SQL queries, ensuring users can only see data from their own organization.
+- **Role-Based Access (RBAC):** The `SQLValidator` uses the user's role (Resident or Board) to enforce access limits. For example, Residents are blocked from bulk neighbor lookups, while Board members have broader selection permissions.
+- **Parameterized Queries:** All queries use parameters to prevent SQL injection.
+- **Human-Friendly Errors:** Instead of generic "Access Denied" messages, the Responder explains *why* a query was blocked based on policy.
+
+---
+
+# 🔗 Integrations & Data Imports
+
+The system supports automated data imports from external providers (e.g., DAH).
+
+### 📂 Google Drive Integration
+The system includes a dedicated `GoogleDriveClient` that can:
+- List files in specific Drive folders.
+- Automatically find and download the latest data archives (ZIP/Excel).
+- Support for Google Service Accounts for secure, non-interactive access.
+
+### 💰 Debt Tracking
+Unit debt information is imported and integrated into the AI pipeline:
+- **Accurate Terminology:** Replaced "accruals" with "debts" throughout the system to better reflect data meaning.
+- **Contextual Awareness:** The user's current balance is included in the LLM prompt context for immediate answers.
+- **Queryable Data:** Debt fields are available in the SQL schema for complex queries (e.g., "List apartments with debt > 500").
 
 ---
 
@@ -237,6 +259,8 @@ Available options for `--include`: `buildings`, `units`, `residents`, `debts`.
 * ✅ LLM integration (Gemini)
 * ✅ SQL-based planning and execution
 * ✅ Chat history storage (MongoDB)
+* ✅ Unit Debt import and AI integration
+* ✅ Google Drive Client for automated imports
 * 🚧 Resident Copilot MVP (in progress)
 * 🚧 Context personalization (improving)
 * 📅 Documents search (RAG)
