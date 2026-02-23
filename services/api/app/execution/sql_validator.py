@@ -2,11 +2,15 @@ class SQLValidator:
     def __init__(self, allowed_tables: set):
         self.allowed_tables = allowed_tables
 
-    def validate(self, sql: str):
+    def validate(self, sql: str, role: str | None = None):
         s = sql.lower()
 
         if not s.startswith("select"):
             raise ValueError("Only SELECT allowed")
+
+        # Board role has extended permissions: allow bulk selections
+        if role == "board":
+            return
 
         forbidden_bulk_patterns = [
             "from users",

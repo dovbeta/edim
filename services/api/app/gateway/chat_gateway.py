@@ -1,7 +1,10 @@
 import re
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from uuid import uuid4
 
 from db.models import ChatIdentity, User
+
 
 
 class ChatGateway:
@@ -15,30 +18,22 @@ class ChatGateway:
     # =====================================================
 
     async def handle_message(
-        self,
-        channel: str,
-        external_user_id: str,
-        message: str,
-        first_name: str | None = None,
-        last_name: str | None = None,
-        username: str | None = None,
+            self,
+            channel: str,
+            external_user_id: str,
+            message: str,
+            first_name: str | None = None,
+            last_name: str | None = None,
+            username: str | None = None,
     ):
         async with self.session_factory() as session:
 
-            identity = await self._get_identity(
+            identity = await self._get_or_create_identity(
                 session, channel, external_user_id
             )
 
-            # 🆕 новий користувач
-            if not identity or not identity.phone:
-                identity = ChatIdentity(
-                    channel=channel,
-                    external_id=external_user_id,
-                    verified=False,
-                )
-                session.add(identity)
-                await session.commit()
-
+            # 🆕 новий або без телефону
+            if not identity.phone:
                 return {
                     "need_phone": True,
                     "text": (
@@ -48,7 +43,7 @@ class ChatGateway:
                     ),
                 }
 
-            # якщо користувача немає, напивати відповідне повідомлення
+            # користувач не знайдений
             if not identity.user_id:
                 return {
                     "text": (
@@ -57,7 +52,6 @@ class ChatGateway:
                     ),
                 }
 
-            # ✅ нормальний сценарій
             answer = await self.orchestrator.handle(
                 message=message,
                 user_id=identity.user_id,
@@ -71,39 +65,27 @@ class ChatGateway:
     # =====================================================
 
     async def handle_contact(
-        self,
-        channel: str,
-        external_user_id: str,
-        phone: str,
-        first_name: str | None = None,
-        last_name: str | None = None,
-        username: str | None = None,
+            self,
+            channel: str,
+            external_user_id: str,
+            phone: str,
+            first_name: str | None = None,
+            last_name: str | None = None,
+            username: str | None = None,
     ):
         async with self.session_factory() as session:
-
-            identity = await self._get_identity(
+            identity = await self._get_or_create_identity(
                 session, channel, external_user_id
             )
 
-            if not identity:
-                identity = ChatIdentity(
-                    channel=channel,
-                    external_id=external_user_id,
-                    verified=False,
-                )
-                session.add(identity)
-
-            # 📱 нормалізація телефону
             phone_norm = self._normalize_phone(phone)
             identity.phone = phone_norm
 
-            # 🔎 пошук користувача
             user = await self._find_user_by_phone(session, phone_norm)
 
             if user:
                 identity.user_id = user.id
                 identity.verified = True
-
                 await session.commit()
 
                 return {
@@ -113,7 +95,6 @@ class ChatGateway:
                     )
                 }
 
-            # не знайдено
             identity.verified = False
             await session.commit()
 
@@ -156,3 +137,36 @@ class ChatGateway:
             digits = "38" + digits
 
         return "+" + digits
+
+    async def _get_or_create_identity(self, session, channel, external_id):
+        stmt = (
+            insert(ChatIdentity)
+            .values(
+                id=uuid4(),
+                channel=channel,
+                external_id=external_id,
+                verified=False,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["channel", "external_id"]
+            )
+            .returning(ChatIdentity.id)
+        )
+
+        res = await session.execute(stmt)
+        row = res.first()
+
+        if row:
+            # новий створений
+            identity_id = row[0]
+        else:
+            # вже існує
+            q = select(ChatIdentity.id).where(
+                ChatIdentity.channel == channel,
+                ChatIdentity.external_id == external_id,
+            )
+            identity_id = (await session.execute(q)).scalar_one()
+
+        # дістаємо ORM-об’єкт
+        q = select(ChatIdentity).where(ChatIdentity.id == identity_id)
+        return (await session.execute(q)).scalar_one()

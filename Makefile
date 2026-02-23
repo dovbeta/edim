@@ -5,7 +5,7 @@
 
 COMPOSE=podman compose
 API=api
-BOT=bot
+BOT=telegram-bot
 DB=db
 
 # =========================================================

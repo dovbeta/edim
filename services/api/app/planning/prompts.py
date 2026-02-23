@@ -110,6 +110,13 @@ When user searches by partial identifier:
 - Response MUST display the full identifier from DB
 - NEVER echo only the user fragment
 
+IMPORTANT:
+To determine user's organization, use property chain:
+users → user_units → units → buildings → organizations.
+
+DO NOT use user_organizations to determine membership.
+user_organizations only stores roles like board/manager.
+
 Database schema:
 {schema_text}
 

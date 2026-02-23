@@ -1,3 +1,5 @@
+from policy.edim_policy import EDIMAccessPolicy
+
 class Orchestrator:
     def __init__(
         self,
@@ -57,20 +59,27 @@ class Orchestrator:
         print(plan)
 
         data = None
+        error = None
 
         # 5 sql path
         if plan.needs_sql and plan.sql:
-            self.validator.validate(plan.sql)
+            try:
+                role = EDIMAccessPolicy.resolve_role(context)
+                self.validator.validate(plan.sql, role=role)
 
-            data = await self.executor.run(
-                plan.sql,
-                plan.params,
-            )
+                data = await self.executor.run(
+                    plan.sql,
+                    plan.params,
+                )
+
+                if plan.intent.startswith("search_") and len(data or []) > 3:
+                    raise ValueError("Neighbor lookup returned too many results")
+
+            except ValueError as e:
+                print(f"Validation/Execution error: {e}")
+                error = str(e)
 
         print(data)
-
-        if plan.intent.startswith("search_") and len(data or []) > 3:
-            raise ValueError("Neighbor lookup returned too many results")
 
         # 6 respond
         answer = await self.responder.respond(
@@ -79,6 +88,7 @@ class Orchestrator:
             data=data,
             history=history,
             plan=plan,
+            error=error,
         )
         print(answer)
 

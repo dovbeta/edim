@@ -1,12 +1,14 @@
 import os
+import asyncio
 import httpx
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     ApplicationBuilder,
     MessageHandler,
     ContextTypes,
-    filters,
+    filters, CommandHandler,
 )
+from telegram.constants import ChatAction
 
 BASE_URL = os.getenv("COPILOT_API_URL", "http://api:8000")
 
@@ -14,6 +16,114 @@ CHAT_URL = BASE_URL + "/chat"
 CONTACT_URL = BASE_URL + "/chat/contact"
 
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    user = msg.from_user
+
+    if not msg:
+        return
+
+    payload = {
+        "channel": "telegram",
+        "external_user_id": str(user.id),
+        "message": "/start",
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "username": user.username,
+    }
+
+    # швидко питаємо backend: чи потрібен телефон
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.post(CHAT_URL, json=payload)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        print("START API failed:", e)
+        await msg.reply_text("👋 Вітаємо в E-Dim Copilot!")
+        return
+
+    if data.get("need_phone"):
+        button = KeyboardButton(
+            text="📱 Поділитися номером",
+            request_contact=True
+        )
+        kb = ReplyKeyboardMarkup([[button]], resize_keyboard=True)
+
+        await msg.reply_text(
+            data.get(
+                "text",
+                "👋 Вітаємо!\nПоділіться номером телефону 📱"
+            ),
+            reply_markup=kb
+        )
+        return
+
+    # якщо вже відомий
+    await msg.reply_text("👋 Вітаємо в E-Dim Copilot! Чим можу допомогти?")
+
+# =====================================================
+# TYPING INDICATOR LOOP
+# =====================================================
+
+async def typing_loop(chat):
+    try:
+        while True:
+            await chat.send_action("typing")
+            await asyncio.sleep(4)  # Telegram typing живе ~5 сек
+    except asyncio.CancelledError:
+        pass
+
+
+# =====================================================
+# BACKGROUND COPILOT CALL
+# =====================================================
+
+async def fetch_and_reply(msg, payload):
+    typing_task = asyncio.create_task(typing_loop(msg.chat))
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(CHAT_URL, json=payload)
+            r.raise_for_status()
+
+            data = (
+                r.json()
+                if "application/json" in r.headers.get("content-type", "")
+                else {}
+            )
+
+    except Exception as e:
+        print("API request failed:", e)
+        typing_task.cancel()
+        await msg.reply_text("⚠️ Copilot тимчасово недоступний")
+        return
+
+    typing_task.cancel()
+
+    # 📱 API просить телефон
+    if data.get("need_phone"):
+        button = KeyboardButton(
+            text="📱 Поділитися номером",
+            request_contact=True
+        )
+        kb = ReplyKeyboardMarkup([[button]], resize_keyboard=True)
+
+        await msg.reply_text(
+            data.get("text", "Будь ласка, поділіться номером"),
+            reply_markup=kb
+        )
+        return
+
+    reply = (
+        data.get("text")
+        or data.get("answer")
+        or data.get("response")
+        or "⚠️ Copilot не надав відповіді"
+    )
+
+    await msg.reply_text(reply)
 
 
 # =====================================================
@@ -36,41 +146,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "username": user.username,
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(CHAT_URL, json=payload)
-            r.raise_for_status()
-
-            data = r.json() if "application/json" in r.headers.get("content-type", "") else {}
-
-    except Exception as e:
-        print("API request failed:", e)
-        await msg.reply_text("⚠️ Copilot API недоступний")
-        return
-
-    # 📱 API просить телефон
-    if data.get("need_phone"):
-        button = KeyboardButton(
-            text="📱 Поділитися номером",
-            request_contact=True
-        )
-        kb = ReplyKeyboardMarkup([[button]], resize_keyboard=True)
-
-        await msg.reply_text(
-            data.get("text", "Будь ласка, поділіться номером"),
-            reply_markup=kb
-        )
-        return
-
-    # 💬 звичайна відповідь
-    reply = (
-        data.get("text")
-        or data.get("answer")
-        or data.get("response")
-        or "⚠️ Copilot не надав відповіді"
+    # 🚀 фоновий виклик Copilot (з typing)
+    context.application.create_task(
+        fetch_and_reply(msg, payload)
     )
-
-    await msg.reply_text(reply)
 
 
 # =====================================================
@@ -95,21 +174,27 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=20) as client:
             r = await client.post(CONTACT_URL, json=payload)
             r.raise_for_status()
 
-            data = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+            data = (
+                r.json()
+                if "application/json" in r.headers.get("content-type", "")
+                else {}
+            )
 
     except Exception as e:
         print("Contact send failed:", e)
         await msg.reply_text("⚠️ Помилка передачі номера")
         return
 
-    # ✅ показуємо текст API (а не хардкод)
     reply = data.get("text") or "Дякуємо! 🙌"
 
-    await msg.reply_text(reply)
+    await msg.reply_text(
+        reply,
+        reply_markup=ReplyKeyboardRemove()
+    )
 
 
 # =====================================================
@@ -121,6 +206,7 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.CONTACT, handle_contact))
+    app.add_handler(CommandHandler("start", handle_start))
 
     print("Telegram bot started")
     app.run_polling()

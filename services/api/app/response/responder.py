@@ -5,11 +5,12 @@ class Responder:
     def __init__(self, llm: LLMClient):
         self.llm = llm
 
-    async def respond(self, message, context, data, history, plan=None):
+    async def respond(self, message, context, data, history, plan=None, error=None):
         prompt_context = to_jsonable({
             "user_data": context,
             "sql_results": data,
-            "plan": plan.__dict__ if plan else None
+            "plan": plan.__dict__ if plan else None,
+            "error": error
         })
 
         print("Generating response")
