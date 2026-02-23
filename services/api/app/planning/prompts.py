@@ -89,6 +89,18 @@ SQL RULES:
 - Car plate searches MUST use partial match with ILIKE and wildcards
 - If searching by an identifier (license_plate, phone, unit_number, document, etc),
   the SELECT MUST include that full identifier column from the database.
+  
+ORGANIZATION FILTER RULE:
+
+If organization_id is available in context (org_roles or properties),
+ALWAYS filter directly by:
+buildings.organization_id = :organization_id
+
+DO NOT determine current user's organization via SQL joins or subqueries.
+
+DO NOT use aliases like current_user (reserved in PostgreSQL).
+
+Membership and access scope are already enforced by the system context.
 
 If data is required:
 Return SQL and params.

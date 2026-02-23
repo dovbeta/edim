@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,12 @@ class Unit(Base):
         String,
         nullable=True,
         index=True,
+    )
+
+    debt_total: Mapped[float | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+        default=0,
     )
 
     unit_type: Mapped[str] = mapped_column(
