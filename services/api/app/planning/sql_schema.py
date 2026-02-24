@@ -12,7 +12,6 @@ Table organizations:
 Table buildings:
 - id uuid
 - address text
-- organization_id uuid
 
 Table units:
 - id uuid

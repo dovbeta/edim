@@ -18,6 +18,43 @@ Example:
 > **User:** When will water be restored?
 > **Copilot:** Water supply in entrance 2 (your entrance) will be restored at 14:00.
 
+# 📋 Requirements
+
+## Functional Requirements
+
+- **User Authentication & Identity Linking:** 
+  - Automated identification of users via Telegram/Viber.
+  - Linking user accounts to specific residential units using phone numbers.
+  - Requesting contact information if the user is not recognized.
+- **AI-Powered Chat Assistant:**
+  - Natural language processing for user queries about building services, debts, and announcements.
+  - Intelligent planning of data retrieval using LLM-generated SQL queries.
+  - Context-aware responses that consider user's building, unit, and history.
+- **Data Integration:**
+  - Automated importing of building, unit, resident, and debt data from external providers (e.g., DAH).
+  - Support for local and remote (Google Drive) data sources.
+  - Synchronization of unit debt information for real-time AI context.
+- **Tenant-Scoped Access:** 
+  - Strict isolation of data between different organizations and buildings.
+  - Residents can only access information related to their own unit or building-wide announcements.
+
+## Non-Functional Requirements (NFR)
+
+- **Security:**
+  - **SQL Injection Prevention:** Use of parameterized queries and a dedicated SQL validation layer.
+  - **Data Isolation:** Enforced tenant scope filters for all database operations.
+  - **RBAC:** Role-based access control to restrict sensitive data access (e.g., separating Resident and Board member permissions).
+- **Performance & Scalability:**
+  - **Asynchronous Processing:** Built on FastAPI and SQLAlchemy (Async) to handle concurrent user requests efficiently.
+  - **Containerization:** Support for Docker/Podman for consistent deployment and scaling.
+  - **Caching (Planned):** Redis integration for session management and frequently accessed data.
+- **Reliability:**
+  - **Error Resilience:** Graceful handling of LLM failures or database timeouts with human-friendly explanations.
+  - **Logging:** Comprehensive logging of chat history and AI planning decisions (MongoDB) for auditing and troubleshooting.
+- **Privacy:**
+  - Minimal personal data collection (primarily phone numbers for linking).
+  - Secure storage of chat history and identity mappings.
+
 ---
 
 # 🧠 Architecture

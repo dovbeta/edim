@@ -130,17 +130,44 @@ async def fetch_and_reply(msg, payload):
 # TEXT MESSAGE
 # =====================================================
 
+def is_bot_mentioned(msg) -> bool:
+    if not msg or not msg.text:
+        return False
+
+    text = msg.text
+
+    # 1️⃣ приват — реагуємо на все
+    if msg.chat.type == "private":
+        return True
+
+    # 2️⃣ !
+    if text.strip().startswith("!"):
+        return True
+
+    return False
+
+def clean_message(text: str) -> str:
+    if not text:
+        return text
+
+    if text.startswith("!"):
+        text = text[1:].strip()
+
+    return text
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     user = msg.from_user
 
-    if not msg or not msg.text:
+    if not is_bot_mentioned(msg):
         return
+
+    clean_text = clean_message(msg.text)
 
     payload = {
         "channel": "telegram",
         "external_user_id": str(user.id),
-        "message": msg.text,
+        "message": clean_text,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "username": user.username,

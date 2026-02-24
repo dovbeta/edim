@@ -34,7 +34,7 @@ class ChatHistoryService:
         self,
         user_id: int,
         channel: str,
-        limit: int = 8,
+        limit: int = 1,
         minutes: int = 60,
     ):
         items = await self.repo.get_recent(

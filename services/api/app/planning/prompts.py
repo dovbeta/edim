@@ -91,6 +91,10 @@ SQL RULES:
 - If searching by an identifier (license_plate, phone, unit_number, document, etc),
   the SELECT MUST include that full identifier column from the database.
   
+Join conditions MUST use real primary/foreign key columns exactly as defined in the schema.
+
+Do NOT invent column names.
+  
 TENANT SCOPING RULE:
 
 Organization and tenant filtering are automatically applied by the system.
@@ -125,6 +129,24 @@ When user searches by partial identifier:
 - SQL MUST SELECT the full identifier column
 - Response MUST display the full identifier from DB
 - NEVER echo only the user fragment
+
+================ USER LANGUAGE NORMALIZATION ================
+
+Users may refer to apartments using shorthand notation.
+
+Interpret the following patterns as unit (apartment) numbers:
+
+- "к60" → unit_number = 60
+- "кв60" → unit_number = 60
+- "кв.60" → unit_number = 60
+- "кв 60" → unit_number = 60
+- "к 60" → unit_number = 60
+
+The letters "к" or "кв" mean apartment/unit.
+
+When such shorthand is used:
+- treat it as unit_number filter
+- SQL MUST filter by u.number = :unit_number
 
 IMPORTANT:
 User access scope (organization, buildings, properties) is already enforced by the system.

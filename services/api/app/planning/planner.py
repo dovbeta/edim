@@ -16,30 +16,13 @@ class Planner:
             history=history,
             schema=self.schema,
         )
+        print("Prompt:", prompt)
 
         result = await self.llm.generate_json(prompt)
 
         sql = result.get("sql")
         params = result.get("params") or {}
 
-        org_roles = context.get("org_roles", [])
-        if sql and org_roles:
-            org_id = org_roles[0]["organization_id"]
-
-            scope = TenantScope(org_id)
-            sql = scope.apply(sql)
-
-            params["organization_id"] = org_id
-
-        # ✅ tenant injection
-        org_roles = context.get("org_roles", [])
-        if org_roles:
-            org_id = org_roles[0]["organization_id"]
-
-            scope = TenantScope(org_id)
-            sql = scope.apply(sql)
-
-            params["organization_id"] = org_id
 
         return QueryPlan(
             intent=result["intent"],
