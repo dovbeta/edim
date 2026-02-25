@@ -9,7 +9,6 @@ motor
 
 redis
 
-qdrant-client
 
 python-dotenv
 openai

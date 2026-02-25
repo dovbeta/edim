@@ -76,7 +76,6 @@ Example:
 
 * **Postgres** — structured data (users, units, buildings, organizations, vehicles)
 * **MongoDB** — chat history, messages, and planner logs
-* **Qdrant** — vector search (for RAG/documents - planned/integration in progress)
 * **Redis** — cache/session (planned)
 
 ---
@@ -300,7 +299,6 @@ Available options for `--include`: `buildings`, `units`, `residents`, `debts`.
 * ✅ Google Drive Client for automated imports
 * 🚧 Resident Copilot MVP (in progress)
 * 🚧 Context personalization (improving)
-* 📅 Documents search (RAG)
 * 📅 Multi-language support
 
 ---
