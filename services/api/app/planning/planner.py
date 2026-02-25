@@ -1,34 +1,52 @@
-from db.models.plan import QueryPlan
-from llm.base import LLMClient
-from planning.tenant_scope import TenantScope
+from typing import List, Dict, Any
+from .plan_models import Plan
 
+DATA_CATALOG = {
+    "resident_address": "structured",
+    "resident_debt": "structured",
+    "contacts": "structured",
+    "vehicles": "structured",
+    "units": "structured",
+    "rules": "vector",
+    "faq": "vector",
+}
 
 class Planner:
-    def __init__(self, llm, schema, prompt_builder):
+    """
+    Responsibilities:
+    - detect intent from user message + history
+    - decide data source using DATA_CATALOG mapping
+    - return Plan object
+    """
+    def __init__(self, llm, prompt_builder):
         self.llm = llm
-        self.schema = schema
         self.prompt_builder = prompt_builder
 
-    async def plan(self, message, context, history):
+    async def plan(self, message: str, history: List[Dict], context: Dict[str, Any]) -> Plan:
         prompt = self.prompt_builder.build(
             message=message,
             context=context,
             history=history,
-            schema=self.schema,
         )
-        print("Prompt:", prompt)
-
+        
         result = await self.llm.generate_json(prompt)
+        
+        intent = result.get("intent", "unknown")
+        
+        # Decide data source based on intent
+        source = DATA_CATALOG.get(intent)
+        sources = [source] if source else []
+        
+        # Special case: if LLM generated SQL, it's definitely structured
+        if result.get("needs_sql") and "structured" not in sources:
+            sources.append("structured")
 
-        sql = result.get("sql")
-        params = result.get("params") or {}
-
-
-        return QueryPlan(
-            intent=result["intent"],
-            needs_sql=result["needs_sql"],
-            needs_more_info=result.get("needs_more_info", False),
-            sql=sql,
-            params=params,
-            explanation=result.get("explanation"),
+        return Plan(
+            intent=intent,
+            sources=sources,
+            query=message,
+            entities=result.get("entities"),
+            filters=result.get("filters"),
+            structured_query=result.get("sql"),
+            structured_params=result.get("params")
         )

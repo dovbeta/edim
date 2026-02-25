@@ -17,9 +17,9 @@ class PlanLogger:
             "channel": channel,
             "message": message,
             "intent": plan.intent,
-            "needs_sql": plan.needs_sql,
-            "sql": plan.sql,
-            "params": plan.params,
+            "sources": plan.sources,
+            "sql": plan.structured_query,
+            "params": plan.structured_params,
             "buildings": list(set(buildings)),
             "created_at": datetime.utcnow(),
         }

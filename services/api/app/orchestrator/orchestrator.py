@@ -1,56 +1,66 @@
-from policy.edim_policy import EDIMAccessPolicy
+from typing import Any
+from conversation.conversation_service import ConversationService
+from planning.planner import Planner
+from retrieval.data_router import DataRouter
 
 class Orchestrator:
+    """
+    Coordinates the AI Copilot orchestration pipeline.
+    
+    Flow:
+    1. Save user message via ConversationService
+    2. Get recent history/context
+    3. Detect intent and build plan via Planner
+    4. Retrieve data (structured or vector) via DataRouter
+    5. Generate answer via AnswerGenerator (Responder)
+    6. Save assistant response via ConversationService
+    """
     def __init__(
         self,
-        chat_history,
-        context_provider,
-        planner,
-        validator,
-        executor,
-        responder,
-        plan_logger,
-        failure_logger,
+        conversation_service: ConversationService,
+        planner: Planner,
+        data_router: DataRouter,
+        responder: Any,  # AnswerGenerator
+        context_provider: Any,
+        plan_logger: Any,
+        failure_logger: Any,
     ):
-        self.chat_history = chat_history
-        self.context_provider = context_provider
+        self.conversation_service = conversation_service
         self.planner = planner
-        self.validator = validator
-        self.executor = executor
+        self.data_router = data_router
         self.responder = responder
+        self.context_provider = context_provider
         self.plan_logger = plan_logger
         self.failure_logger = failure_logger
 
     async def handle(self, message: str, user_id: int, channel: str):
-
-        # 1 save user msg
-        await self.chat_history.save_user_message(
+        # 1. save user msg
+        await self.conversation_service.save_user_message(
             user_id=user_id,
-            channel=channel,
             text=message,
+            channel=channel,
         )
 
-        # 2 history
-        history = await self.chat_history.get_context_messages(
+        # 2. get history and context
+        history = await self.conversation_service.get_recent_history(
             user_id=user_id,
             channel=channel,
-            limit=8,
-            minutes=60,
+            limit=10,
         )
-
-        # 3 domain context
+        
         context = await self.context_provider.get(
             user_id=user_id,
             message=message,
             history=history,
         )
 
-        # 4 plan
+        # 3. plan
         plan = await self.planner.plan(
             message=message,
-            context=context,
             history=history,
+            context=context,
         )
+        
         await self.plan_logger.log(
             user_id=user_id,
             channel=channel,
@@ -58,39 +68,25 @@ class Orchestrator:
             context=context,
             plan=plan,
         )
-        print(plan)
 
+        # 4. retrieve data
         data = None
         error = None
+        try:
+            data = await self.data_router.retrieve(plan)
+        except Exception as e:
+            print(f"Retrieval error: {e}")
+            error = str(e)
+            await self.failure_logger.log_failure(
+                component="orchestrator_retrieval",
+                exception=e,
+                meta={
+                    "user_id": str(user_id),
+                    "plan": plan.__dict__,
+                }
+            )
 
-        # 5 sql path
-        if plan.needs_sql and plan.sql:
-            try:
-                role = EDIMAccessPolicy.resolve_role(context)
-                self.validator.validate(plan.sql, role=role)
-
-                data = await self.executor.run(
-                    plan.sql,
-                    plan.params,
-                )
-
-                if plan.intent.startswith("search_") and len(data or []) > 3:
-                    raise ValueError("Neighbor lookup returned too many results")
-
-            except Exception as e:
-                print(f"Validation/Execution error: {e}")
-                error = str(e)
-                await self.failure_logger.log_failure(
-                    component="orchestrator_sql_execution",
-                    exception=e,
-                    meta={
-                        "user_id": str(user_id),
-                        "sql": plan.sql,
-                        "params": plan.params,
-                    }
-                )
-
-        # 6 respond
+        # 5. generate answer
         answer = await self.responder.respond(
             message=message,
             context=context,
@@ -100,11 +96,11 @@ class Orchestrator:
             error=error,
         )
 
-        # 7 save assistant
-        await self.chat_history.save_assistant_message(
+        # 6. save ai reply
+        await self.conversation_service.save_ai_message(
             user_id=user_id,
-            channel=channel,
             text=answer,
+            channel=channel,
         )
 
         return answer

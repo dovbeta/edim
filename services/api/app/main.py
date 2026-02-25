@@ -9,9 +9,11 @@ from db.session import AsyncSessionLocal
 from context.context_manager import ContextManager
 from context.context_provider import ContextProvider
 
-# chat history
+# conversation
+from conversation.conversation_service import ConversationService
+
+# chat history repository (still needed)
 from chat_history.repository import ChatHistoryRepository
-from chat_history.service import ChatHistoryService
 
 # failure logger
 from failure_logger.repository import FailureLoggerRepository
@@ -25,7 +27,10 @@ from planning.plan_logger import PlanLogger
 # planning
 from planning.planner import Planner
 
-# execution
+# retrieval
+from retrieval.data_router import DataRouter
+from retrieval.structured_retriever import StructuredRetriever
+from retrieval.vector_retriever import VectorRetriever
 from execution.sql_validator import SQLValidator
 from execution.sql_executor import SQLExecutor
 from planning.prompts import PlannerPromptBuilder
@@ -62,8 +67,12 @@ mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
 mongo_db = mongo_client[os.getenv("MONGO_DB", "edim")]
 mongo_messages = mongo_db["messages"]
 
+# -------------------------------------------------
+# CONVERSATION SERVICE
+# -------------------------------------------------
+
 chat_history_repo = ChatHistoryRepository(mongo_messages)
-chat_history = ChatHistoryService(chat_history_repo)
+conversation_service = ConversationService(chat_history_repo)
 
 # -------------------------------------------------
 # MONGO FAILURE LOGS
@@ -99,7 +108,6 @@ planner_prompt_builder = PlannerPromptBuilder(schema=SQL_SCHEMA)
 
 planner = Planner(
     llm=llm_client,
-    schema=SQL_SCHEMA,
     prompt_builder=planner_prompt_builder,
 )
 planner_logs = mongo_db["planner_logs"]
@@ -107,7 +115,7 @@ plan_logger = PlanLogger(planner_logs)
 
 
 # -------------------------------------------------
-# SQL EXECUTION
+# RETRIEVAL (STRUCTURED + VECTOR)
 # -------------------------------------------------
 
 validator = SQLValidator(
@@ -124,6 +132,10 @@ validator = SQLValidator(
 )
 sql_executor = SQLExecutor(session_factory=AsyncSessionLocal)
 
+structured_retriever = StructuredRetriever(executor=sql_executor, validator=validator)
+vector_retriever = VectorRetriever()
+data_router = DataRouter(structured_retriever=structured_retriever, vector_retriever=vector_retriever)
+
 
 # -------------------------------------------------
 # RESPONDER
@@ -136,12 +148,11 @@ responder = Responder(llm=llm_client)
 # -------------------------------------------------
 
 orchestrator = Orchestrator(
-    chat_history=chat_history,
-    context_provider=context_provider,
+    conversation_service=conversation_service,
     planner=planner,
-    validator=validator,
-    executor=sql_executor,
+    data_router=data_router,
     responder=responder,
+    context_provider=context_provider,
     plan_logger=plan_logger,
     failure_logger=failure_logger,
 )
