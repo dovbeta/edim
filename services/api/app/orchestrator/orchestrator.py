@@ -10,6 +10,7 @@ class Orchestrator:
         executor,
         responder,
         plan_logger,
+        failure_logger,
     ):
         self.chat_history = chat_history
         self.context_provider = context_provider
@@ -18,6 +19,7 @@ class Orchestrator:
         self.executor = executor
         self.responder = responder
         self.plan_logger = plan_logger
+        self.failure_logger = failure_logger
 
     async def handle(self, message: str, user_id: int, channel: str):
 
@@ -75,9 +77,18 @@ class Orchestrator:
                 if plan.intent.startswith("search_") and len(data or []) > 3:
                     raise ValueError("Neighbor lookup returned too many results")
 
-            except ValueError as e:
+            except Exception as e:
                 print(f"Validation/Execution error: {e}")
                 error = str(e)
+                await self.failure_logger.log_failure(
+                    component="orchestrator_sql_execution",
+                    exception=e,
+                    meta={
+                        "user_id": str(user_id),
+                        "sql": plan.sql,
+                        "params": plan.params,
+                    }
+                )
 
         # 6 respond
         answer = await self.responder.respond(

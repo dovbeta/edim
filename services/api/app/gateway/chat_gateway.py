@@ -9,9 +9,10 @@ from db.models import ChatIdentity, User
 
 class ChatGateway:
 
-    def __init__(self, session_factory, orchestrator):
+    def __init__(self, session_factory, orchestrator, failure_logger=None):
         self.session_factory = session_factory
         self.orchestrator = orchestrator
+        self.failure_logger = failure_logger
 
     # =====================================================
     # TEXT MESSAGE
@@ -52,11 +53,24 @@ class ChatGateway:
                     ),
                 }
 
-            answer = await self.orchestrator.handle(
-                message=message,
-                user_id=identity.user_id,
-                channel=channel,
-            )
+            try:
+                answer = await self.orchestrator.handle(
+                    message=message,
+                    user_id=identity.user_id,
+                    channel=channel,
+                )
+            except Exception as e:
+                if self.failure_logger:
+                    await self.failure_logger.log_failure(
+                        component="chat_gateway_handle_message",
+                        exception=e,
+                        meta={
+                            "user_id": str(identity.user_id),
+                            "channel": channel,
+                            "external_user_id": external_user_id,
+                        }
+                    )
+                return {"text": "⚠️ Вибачте, сталася внутрішня помилка. Спробуйте пізніше."}
 
             return {"text": answer}
 

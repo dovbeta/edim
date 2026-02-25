@@ -13,6 +13,10 @@ from context.context_provider import ContextProvider
 from chat_history.repository import ChatHistoryRepository
 from chat_history.service import ChatHistoryService
 
+# failure logger
+from failure_logger.repository import FailureLoggerRepository
+from failure_logger.service import FailureLoggerService
+
 # llm
 from llm.gemini import GeminiClient
 from policy.prompt_builder import EDIMPromptBuilder
@@ -60,6 +64,14 @@ mongo_messages = mongo_db["messages"]
 
 chat_history_repo = ChatHistoryRepository(mongo_messages)
 chat_history = ChatHistoryService(chat_history_repo)
+
+# -------------------------------------------------
+# MONGO FAILURE LOGS
+# -------------------------------------------------
+
+mongo_failures = mongo_db["failures"]
+failure_logger_repo = FailureLoggerRepository(mongo_failures)
+failure_logger = FailureLoggerService(failure_logger_repo)
 
 
 # -------------------------------------------------
@@ -131,6 +143,7 @@ orchestrator = Orchestrator(
     executor=sql_executor,
     responder=responder,
     plan_logger=plan_logger,
+    failure_logger=failure_logger,
 )
 
 
@@ -141,6 +154,7 @@ orchestrator = Orchestrator(
 gateway = ChatGateway(
     session_factory=get_session_factory(),
     orchestrator=orchestrator,
+    failure_logger=failure_logger,
 )
 
 
