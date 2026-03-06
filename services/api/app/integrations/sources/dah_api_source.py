@@ -1,4 +1,5 @@
 import io
+import json
 import pandas as pd
 import httpx
 import re
@@ -238,3 +239,25 @@ class DahAPISource(APISource):
         debts = agg.to_dict(orient="records")
 
         return debts
+
+    async def load_knowledge(self) -> List[Dict]:
+        folder_id = self.config.get("knowledge_folder_id")
+        service_account_info = self.config.get("google_service_account_json")
+
+        if not folder_id or not service_account_info:
+            return []
+
+        gdrive = GoogleDriveClient(service_account_info)
+        q = "name = 'knowledge_base.json'"
+        files = gdrive.list_files(folder_id, q=q)
+
+        if not files:
+            return []
+
+        # Get the latest knowledge file
+        latest_file = files[0]
+        content = gdrive.download_file(latest_file["id"])
+        data = json.loads(content)
+        if isinstance(data, list):
+            return data
+        return [data]

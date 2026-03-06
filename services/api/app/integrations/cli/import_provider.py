@@ -10,7 +10,7 @@ from integrations.runner import run_provider_import
 @click.option(
     "--include",
     multiple=True,
-    type=click.Choice(["buildings", "units", "residents", "vehicles", "debts"]),
+    type=click.Choice(["buildings", "units", "residents", "vehicles", "debts", "knowledge"]),
     help="Specific entities to import. Can be specified multiple times.",
 )
 def import_provider(provider_id: str, include: tuple):

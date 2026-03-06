@@ -21,5 +21,8 @@ class BaseSource(ABC):
     async def load_unit_debts(self) -> List[Any]:
         return []
 
+    async def load_knowledge(self) -> List[Any]:
+        return []
+
     async def close(self):
         pass

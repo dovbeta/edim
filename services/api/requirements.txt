@@ -12,6 +12,7 @@ redis
 
 python-dotenv
 openai
+google-genai
 httpx
 google-generativeai
 sqlalchemy

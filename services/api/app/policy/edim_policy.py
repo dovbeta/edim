@@ -84,7 +84,6 @@ class EDIMAccessPolicy:
     @staticmethod
     def resolve_role(context: dict) -> str:
         org_roles = context.get("org_roles", [])
-        print("org_roles:", org_roles)
 
         for r in org_roles:
             if r.get("role") == "board":

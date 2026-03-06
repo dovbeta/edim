@@ -9,7 +9,7 @@ from policy.edim_policy import Policy
 class GeminiClient(LLMClient):
     MAX_HISTORY_CHARS = 2000
 
-    def __init__(self, system_prompt: str, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, system_prompt="", model_name="gemini-2.5-flash"):
         self.system_prompt = system_prompt
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:

@@ -21,6 +21,7 @@ from failure_logger.service import FailureLoggerService
 
 # llm
 from llm.gemini import GeminiClient
+from llm.openai_embed import OpenAIEmbeddingClient
 from policy.prompt_builder import EDIMPromptBuilder
 from planning.plan_logger import PlanLogger
 
@@ -66,6 +67,7 @@ def get_session_factory():
 mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
 mongo_db = mongo_client[os.getenv("MONGO_DB", "edim")]
 mongo_messages = mongo_db["messages"]
+mongo_knowledge = mongo_db["knowledge"]
 
 # -------------------------------------------------
 # CONVERSATION SERVICE
@@ -133,7 +135,12 @@ validator = SQLValidator(
 sql_executor = SQLExecutor(session_factory=AsyncSessionLocal)
 
 structured_retriever = StructuredRetriever(executor=sql_executor, validator=validator)
-vector_retriever = VectorRetriever()
+
+embedding_client = OpenAIEmbeddingClient()
+vector_retriever = VectorRetriever(
+    collection=mongo_knowledge,
+    embedding_client=embedding_client
+)
 data_router = DataRouter(structured_retriever=structured_retriever, vector_retriever=vector_retriever)
 
 
