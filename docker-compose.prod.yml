@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: edim-api
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: services/telegram-bot/Dockerfile
+    container_name: edim-telegram
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - api
+    command: python bot.py
+
+  postgres:
+    image: postgres:15
+    container_name: edim-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: edim
+      POSTGRES_USER: edim
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    container_name: edim-mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7
+    container_name: edim-redis
+    restart: always
+
+volumes:
+  postgres_data:
+  mongo_data:
