@@ -33,9 +33,9 @@ services:
     container_name: edim-postgres
     restart: always
     environment:
-      POSTGRES_DB: edim
-      POSTGRES_USER: edim
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: copilot
+      POSTGRES_USER: copilot
+      POSTGRES_PASSWORD: copilot
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
