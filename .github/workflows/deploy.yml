@@ -5,14 +5,10 @@ push:
 branches: [ main ]
 
 jobs:
-
 deploy:
-
-```
 runs-on: ubuntu-latest
 
 steps:
-
   - name: Checkout
     uses: actions/checkout@v4
 
@@ -28,17 +24,14 @@ steps:
 
   - name: Build image
     run: |
-      docker build -t edim-api .
-
-  - name: Tag image
-    run: |
-      docker tag edim-api:latest \
-      ${{ secrets.ECR_REPOSITORY }}:latest
+      docker build \
+        -t ${{ secrets.ECR_REPOSITORY }}:latest \
+        ./services/api
 
   - name: Push image
     run: |
       docker push \
-      ${{ secrets.ECR_REPOSITORY }}:latest
+        ${{ secrets.ECR_REPOSITORY }}:latest
 
   - name: Deploy to server
     uses: appleboy/ssh-action@v1.0.3
@@ -48,8 +41,5 @@ steps:
       key: ${{ secrets.SERVER_SSH_KEY }}
       script: |
         cd /home/ubuntu/edim
-
         docker compose -f docker-compose.prod.yml pull
-
         docker compose -f docker-compose.prod.yml up -d
-```
