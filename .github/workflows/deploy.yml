@@ -2,7 +2,8 @@ name: Deploy EDIM
 
 on:
 push:
-branches: [ main ]
+branches:
+- main
 
 jobs:
 deploy:
@@ -20,18 +21,26 @@ steps:
       aws-region: ${{ secrets.AWS_REGION }}
 
   - name: Login to ECR
+    id: login-ecr
     uses: aws-actions/amazon-ecr-login@v2
 
-  - name: Build image
+  - name: Build and push api image
+    env:
+      ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      ECR_REPOSITORY: edim-api
+      IMAGE_TAG: latest
     run: |
-      docker build \
-        -t ${{ secrets.ECR_REPOSITORY }}:latest \
-        ./services/api
+      docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/api
+      docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-  - name: Push image
+  - name: Build and push telegram-bot image
+    env:
+      ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      ECR_REPOSITORY: edim-telegram
+      IMAGE_TAG: latest
     run: |
-      docker push \
-        ${{ secrets.ECR_REPOSITORY }}:latest
+      docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/telegram-bot
+      docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   - name: Deploy to server
     uses: appleboy/ssh-action@v1.0.3
@@ -41,5 +50,7 @@ steps:
       key: ${{ secrets.SERVER_SSH_KEY }}
       script: |
         cd /home/ubuntu/edim
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
         docker compose -f docker-compose.prod.yml pull
         docker compose -f docker-compose.prod.yml up -d
+
