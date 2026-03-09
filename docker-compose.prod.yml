@@ -3,9 +3,7 @@ version: "3.9"
 services:
 
   api:
-    build:
-      context: ./services/api
-      dockerfile: Dockerfile
+    image: 803018310241.dkr.ecr.eu-central-1.amazonaws.com/edim-api:latest
     container_name: edim-api
     restart: always
     env_file:
@@ -16,11 +14,14 @@ services:
       - postgres
       - mongo
       - redis
+    command: >
+      bash -c "
+      alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
 
   telegram-bot:
-    build:
-      context: ./services/telegram-bot
-      dockerfile: Dockerfile
+    image: 803018310241.dkr.ecr.eu-central-1.amazonaws.com/edim-telegram:latest
     container_name: edim-telegram
     restart: always
     env_file:
