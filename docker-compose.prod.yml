@@ -19,15 +19,14 @@ services:
 
   telegram-bot:
     build:
-      context: .
-      dockerfile: services/telegram-bot/Dockerfile
+      context: ./services/telegram-bot
+      dockerfile: Dockerfile
     container_name: edim-telegram
     restart: always
     env_file:
       - .env
     depends_on:
       - api
-    command: python bot.py
 
   postgres:
     image: postgres:15
