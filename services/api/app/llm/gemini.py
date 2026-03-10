@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Any, Dict, List, Optional
-import google.generativeai as genai
+from google import genai
 from .base import LLMClient
 from policy.edim_policy import Policy
 
@@ -11,25 +11,36 @@ class GeminiClient(LLMClient):
 
     def __init__(self, system_prompt="", model_name="gemini-2.5-flash"):
         self.system_prompt = system_prompt
+        self.model_name = model_name
+
         api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
+
+        self.client = genai.Client(api_key=api_key)
 
     async def generate(
-        self,
-        message: str,
-        context: Optional[Dict] = None,
-        history: Optional[List] = None,
-        policy: Optional[Policy] = None
+            self,
+            message: str,
+            context=None,
+            history=None,
+            policy=None
     ) -> str:
+
         prompt = self._build_prompt(message, context, history, policy)
-        response = self.model.generate_content(prompt)
-        return self._extract_text(response)
+
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
+
+        return response.text
 
     async def generate_text(self, prompt: str) -> str:
-        response = self.model.generate_content(prompt)
-        return self._extract_text(response)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
+
+        return response.text
 
     async def generate_json(self, prompt: str, retries: int = 2) -> Dict[str, Any]:
         json_prompt = f"Return ONLY valid JSON.\n\n{prompt}"
