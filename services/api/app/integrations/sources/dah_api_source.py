@@ -13,25 +13,23 @@ def parse_premises(text: str):
     if not text:
         return None, None, None
 
-    # Під’їзд 11, Квартира 237
-    m = re.search(r"Під.?їзд\s*(\d+).*,\s*(\w+)\s*([\w\d]+)", text)
+    text = text.strip()
+
+    # optional section
+    section_match = re.search(r"Під.?їзд\s*(\d+)", text, re.IGNORECASE)
+    section = section_match.group(1) if section_match else None
+
+    # unit type + number (last word before number is type)
+    m = re.search(r"([^\d]+?)\s*(\d+)\s*$", text)
 
     if not m:
-        return None, None, None
+        return section, None, None
 
-    section = m.group(1)
-    raw_type = m.group(2).lower()
-    number = m.group(3)
+    unit_type = m.group(1).strip().lower()
+    number = m.group(2)
 
-    type_map = {
-        "квартира": "apartment",
-        "офіс": "commercial",
-        "комора": "storage",
-        "паркінг": "parking",
-        "гараж": "garage",
-    }
-
-    unit_type = type_map.get(raw_type, "apartment")
+    # прибираємо "Під’їзд X," якщо він є
+    unit_type = re.sub(r"Під.?їзд\s*\d+,\s*", "", unit_type, flags=re.IGNORECASE)
 
     return section, unit_type, number
 
