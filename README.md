@@ -148,12 +148,28 @@ Bot flow:
 
 ---
 
-# 🤖 AI Logic (Planning & Execution)
+# 🤖 AI Logic (Planning, SQL & Vector Search)
 
-The Copilot uses a two-step approach for handling user queries:
+The Copilot uses a hybrid approach for handling user queries, combining structured SQL execution with semantic vector search:
 
-1. **Planner:** The LLM receives the user's message, conversation history, and the database schema. It decides if the request needs data from the database. If so, it generates a safe, parameterized SQL query.
-2. **Executor & Responder:** The SQL query is validated against a whitelist of tables and security policies. If validation fails (e.g., unauthorized bulk access), the error is passed back to the LLM (Responder), which crafts a polite explanation for the user. If validation passes, the results are used to generate the final response.
+### 1. **Planner (Intent Recognition)**
+The LLM receives the user's message, conversation history, and the database schema. It decides if the request needs data from the database (SQL) or if it's a general question that requires searching the building's knowledge base (Vector Search).
+
+### 2. **SQL Execution**
+If the planner generates a SQL query:
+- **Validation:** The query is checked against a whitelist of tables and security policies.
+- **Execution:** Validated queries are executed with automatic **Tenant Isolation** and **RBAC** filters.
+
+### 3. **Vector Search & Embeddings (RAG)**
+For questions about house rules, announcements, or general instructions (unstructured data), the system uses **Retrieval-Augmented Generation (RAG)**:
+
+- **Why it's needed:** SQL is great for structured data (debts, residents), but poor for semantic questions like "Can I keep a dog?" or "How to report a leak?". Vector search allows the AI to find relevant text based on *meaning* rather than exact keywords.
+- **Data Source:** Knowledge data is imported from external sources (e.g., `knowledge_base.json` from Google Drive) into a **MongoDB `knowledge` collection**.
+- **Embedding Process:** During import, the `vectorize_knowledge` service converts text into high-dimensional vectors (embeddings) using **OpenAI (`text-embedding-3-small`)** or **Gemini**.
+- **Search:** When a user asks a question, the query is embedded, and a **MongoDB Atlas Vector Search** is performed to find the top 5 most relevant snippets. These snippets are then provided to the LLM (Responder) as context.
+
+### 4. **Responder**
+The final answer is crafted by the LLM, combining results from SQL, Vector Search, and the user's personal context. If a query was blocked by security policies, the Responder explains why.
 
 ### 🛡️ Security & Privacy Decisions
 - **Tenant Isolation:** A `TenantScope` filter is automatically applied to all generated SQL queries, ensuring users can only see data from their own organization.
