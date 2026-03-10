@@ -1,4 +1,7 @@
+from datetime import datetime
+import zoneinfo
 import os
+
 import redis
 from pymongo import MongoClient
 import psycopg2
@@ -30,6 +33,7 @@ class ContextManager:
         org_roles = await self._get_user_org_roles(user_id)
 
         return {
+            "time": self._get_time_context(),
             "user": user,
             "properties": properties,
             "vehicles": vehicles,
@@ -137,4 +141,17 @@ class ContextManager:
             })
 
         return roles
+
+    @staticmethod
+    def _get_time_context():
+        now = datetime.now(zoneinfo.ZoneInfo("Europe/Kyiv"))
+
+        return {
+            "now": now.isoformat(),
+            "today": str(now.date()),
+            "year": now.year,
+            "month": now.month,
+            "day": now.day,
+            "timezone": "Europe/Kyiv"
+        }
 
