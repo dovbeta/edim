@@ -3,25 +3,25 @@ from .plan_models import Plan
 
 
 DATA_CATALOG = {
-    "resident_address": "structured",
-    "resident_debt": "structured",
-    "contacts": "structured",
-    "vehicles": "structured",
-    "units": "structured",
+    "resident_address": "structured_data",
+    "resident_debt": "structured_data",
+    "contacts": "structured_data",
+    "vehicles": "structured_data",
+    "units": "structured_data",
 
-    "rules": "vector",
-    "faq": "vector",
-    "services": "vector",
-    "announcements": "vector",
+    "rules": "vector_knowledge",
+    "faq": "vector_knowledge",
+    "services": "vector_knowledge",
+    "announcements": "vector_knowledge",
 }
 
 
 class Planner:
     """
     Responsibilities:
-    - detect intent from user message + history
-    - decide data source (structured / vector)
-    - return Plan object
+    - detect intent
+    - decide data source
+    - normalize query
     """
 
     def __init__(self, llm, prompt_builder):
@@ -47,21 +47,25 @@ class Planner:
 
         sources: List[str] = []
 
-        # mapping intent → source
         source = DATA_CATALOG.get(intent)
 
         if source:
             sources.append(source)
 
-        # якщо LLM вирішив що потрібен SQL
-        if result.get("needs_sql"):
-            if "structured" not in sources:
-                sources.append("structured")
+        # planner explicitly asks for structured data
+        if result.get("needs_structured_data"):
+            if "structured_data" not in sources:
+                sources.append("structured_data")
 
-
-        # якщо intent невідомий — fallback на vector
+        # fallback logic
         if not sources:
-            sources.append("vector")
+            sources.append("vector_knowledge")
+
+        # if planner says no data needed
+        if intent in ["greeting", "thanks", "smalltalk"]:
+            sources = ["none"]
+
+        print(f"Intent: {intent}, Sources: {sources}, response: {result}")
 
         return Plan(
             intent=intent,
@@ -69,6 +73,8 @@ class Planner:
             query=result.get("query", message),
             entities=result.get("entities"),
             filters=result.get("filters"),
-            structured_query=result.get("sql"),
+            structured_query=result.get("structured_query"),
             structured_params=result.get("params"),
+            needs_more_info=result.get("needs_more_info", False),
+            explanation=result.get("explanation"),
         )

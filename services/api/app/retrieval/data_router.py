@@ -14,12 +14,17 @@ class DataRouter:
 
     async def retrieve(self, plan: Plan) -> Any:
         results = {}
+
+        print(f"Retrieving data from sources: {plan.sources}")
+
         
-        if "structured" in plan.sources:
-            results["structured"] = await self.structured_retriever.retrieve(plan)
+        if "structured_data" in plan.sources:
+            results["structured_data"] = await self.structured_retriever.retrieve(plan)
             
-        if "vector" in plan.sources:
-            results["vector"] = await self.vector_retriever.retrieve(plan)
+        if "vector_data" in plan.sources:
+            results["vector_data"] = await self.vector_retriever.retrieve(plan)
+
+        print(f"Retrieved data: {results}")
             
         # Return merged results or primary result
         if len(results) == 1:

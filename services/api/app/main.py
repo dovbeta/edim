@@ -26,7 +26,7 @@ from policy.prompt_builder import EDIMPromptBuilder
 from planning.plan_logger import PlanLogger
 
 # planning
-from planning.planner import Planner
+from planning.planner import Planner, DATA_CATALOG
 
 # retrieval
 from retrieval.data_router import DataRouter
@@ -106,7 +106,7 @@ context_provider = ContextProvider(context_manager)
 # PLANNER
 # -------------------------------------------------
 
-planner_prompt_builder = PlannerPromptBuilder(schema=SQL_SCHEMA)
+planner_prompt_builder = PlannerPromptBuilder(schema=SQL_SCHEMA, data_catalog=DATA_CATALOG)
 
 planner = Planner(
     llm=llm_client,

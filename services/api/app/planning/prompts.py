@@ -11,8 +11,9 @@ class PlannerPromptBuilder:
     - params
     """
 
-    def __init__(self, schema: str):
+    def __init__(self, schema: str, data_catalog: dict):
         self.schema = schema
+        self.data_catalog = data_catalog
 
     def build(
         self,
@@ -69,11 +70,31 @@ User:
                 msgs.append(f"{role}: {text}")
             history_text = "Recent conversation:\n" + "\n".join(msgs)
 
+        # ----- DATA CATALOG -----
+
+        catalog_lines = []
+
+        for intent, source in self.data_catalog.items():
+            catalog_lines.append(f"- {intent}: {source}")
+
+        catalog_text = "\n".join(catalog_lines)
+
         prompt = f"""
 You are EDIM Copilot SQL planner.
 
 Your task:
 Understand the user question and decide if database data is required.
+
+AVAILABLE INTENTS AND THEIR DATA SOURCES:
+
+{catalog_text}
+Instructions:
+1. First try to select the MOST APPROPRIATE intent from the list above.
+2. If none of the intents match the user message well, you MAY create a NEW intent name.
+3. If you create a new intent, choose the most appropriate data source:
+   - structured_data
+   - vector_knowledge
+   - none
 
 User role: {policy.role_name}
 
@@ -110,18 +131,17 @@ DO NOT use aliases like current_user (reserved in PostgreSQL).
 
 Membership and access scope are already enforced by the system context.
 
-If data is required:
-Return SQL and params.
+If data is required from structured sources:
 
-If you cannot fulfill the request because you need more information from the user (e.g. which unit, which person, or missing car plate), set needs_more_info to true and explain what is missing.
+Return:
+- needs_structured_data: true
+- structured_query
+- params
 
-Return JSON:
-- intent: snake_case
-- needs_sql: true/false
-- needs_more_info: true/false
-- sql: SQL or null
-- params: dict or null
-- explanation: short explanation for the system or what information is missing from the user
+If structured data is NOT required:
+needs_structured_data: false
+structured_query: null
+params: null
 
 IDENTIFIER RESPONSE RULE:
 When user searches by partial identifier:

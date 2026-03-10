@@ -25,4 +25,5 @@ class StructuredRetriever:
             plan.structured_params,
             context=context
         )
+        print(f"Retrieved {len(data)} records from structured data source")
         return data
