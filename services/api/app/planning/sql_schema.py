@@ -1,4 +1,8 @@
 SQL_SCHEMA = """
+Primary query sources:
+- units_extended
+- unit_residents
+
 Table users:
 - id uuid
 - first_name text
@@ -42,4 +46,28 @@ Table vehicles:
 - model text
 - license_plate text
 
+View units_extended:
+- unit_id uuid
+- unit_number text
+- personal_account text
+- unit_type text
+- floor int
+- section text
+- rooms int
+- area_total numeric
+- debt_total numeric
+- building_id uuid
+- building_address text
+- organization_id uuid
+- organization_name text
+
+
+View unit_residents:
+- unit_id uuid
+- unit_number text
+- user_id uuid
+- first_name text
+- last_name text
+- phone text
+- resident_role text
 """
