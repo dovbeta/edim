@@ -30,6 +30,11 @@ def upgrade() -> None:
             u.id AS unit_id,
             u.number AS unit_number,
             u.unit_type,
+            u.floor,
+            u.section,
+            u.rooms,
+            u.area_total,
+            u.debt_total,
 
             b.id AS building_id,
             b.address AS building_address,

@@ -65,6 +65,10 @@ View units_extended:
 View unit_residents:
 - unit_id uuid
 - unit_number text
+- unit_type text
+- building_id text
+- building_address text
+- organization_id text
 - user_id uuid
 - first_name text
 - last_name text
