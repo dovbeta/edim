@@ -66,6 +66,11 @@ View unit_residents:
 - unit_id uuid
 - unit_number text
 - unit_type text
+- floor text
+- section text
+- rooms text
+- area_total numeric
+- debt_total numeric
 - building_id text
 - building_address text
 - organization_id text
