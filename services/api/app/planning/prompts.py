@@ -167,6 +167,12 @@ Interpret the following patterns as unit (apartment) numbers:
 - "кв 60" → unit_number = 60
 - "к 60" → unit_number = 60
 
+If a building number or unit number contains a letter
+(for example: 12а, 7Б, 15В):
+
+- The letter MUST be interpreted as a Ukrainian Cyrillic letter.
+- NEVER treat such letters as Latin characters.
+
 The letters "к" or "кв" mean apartment/unit.
 
 When such shorthand is used:
