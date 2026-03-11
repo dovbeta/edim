@@ -123,6 +123,11 @@ DO NOT include organization_id in SQL.
 DO NOT include organization_id in params.
 DO NOT filter by organization manually.
 
+UNIT TYPE RULE
+The field unit_type describes the type of premises.
+If the user explicitly mentions the type of premises,
+the SQL query MUST include a filter on unit_type.
+
 Always write queries as if data is already limited to the user's organization.
 
 DO NOT determine current user's organization via SQL joins or subqueries.
@@ -167,13 +172,6 @@ The letters "к" or "кв" mean apartment/unit.
 When such shorthand is used:
 - treat it as unit_number filter
 - SQL MUST filter by u.number = :unit_number
-
-IMPORTANT:
-User access scope (organization, buildings, properties) is already enforced by the system.
-Never attempt to determine tenant or organization in SQL.
-
-DO NOT use user_organizations to determine membership.
-user_organizations only stores roles like board/manager.
 
 Database schema:
 {schema_text}

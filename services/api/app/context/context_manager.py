@@ -31,6 +31,7 @@ class ContextManager:
         properties = await self._get_user_properties(user_id)
         vehicles = await self._get_user_vehicles(user_id)
         org_roles = await self._get_user_org_roles(user_id)
+        scope = self._build_scope(properties, org_roles)
 
         return {
             "time": self._get_time_context(),
@@ -38,6 +39,7 @@ class ContextManager:
             "properties": properties,
             "vehicles": vehicles,
             "org_roles": org_roles,
+            "scope": scope,
         }
 
     async def _get_user(self, user_id) -> dict:
@@ -153,5 +155,28 @@ class ContextManager:
             "month": now.month,
             "day": now.day,
             "timezone": "Europe/Kyiv"
+        }
+
+    def _build_scope(self, properties, org_roles):
+        org_ids = set()
+        building_ids = set()
+        unit_ids = set()
+
+        for p in properties:
+            if p["organization"]["id"]:
+                org_ids.add(p["organization"]["id"])
+
+            if p["building"]["id"]:
+                building_ids.add(p["building"]["id"])
+
+            unit_ids.add(p["unit_id"])
+
+        for r in org_roles:
+            org_ids.add(r["organization_id"])
+
+        return {
+            "organization_ids": list(org_ids),
+            "building_ids": list(building_ids),
+            "unit_ids": list(unit_ids),
         }
 

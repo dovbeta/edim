@@ -1,6 +1,3 @@
-from .edim_policy import EDIMAccessPolicy
-
-
 class EDIMPromptBuilder:
     BASE_SYSTEM = """
     Ти — Домовик, цифровий AI-помічник ОСББ платформи E-Dim («твій цифровий дім»).
@@ -30,6 +27,9 @@ class EDIMPromptBuilder:
     Персона:
     Ти поводишся як «домовик будинку» — знаєш усе про дім і допомагаєш мешканцям у щоденних питаннях.
     Не вигадуй дані, яких немає в системі.
+    
+    If SQL results contain records from multiple buildings,
+    group the results by building address.
     """
 
     @staticmethod

@@ -24,6 +24,7 @@ class Orchestrator:
         context_provider: Any,
         plan_logger: Any,
         failure_logger: Any,
+        scope_enforcer: Any,
     ):
         self.conversation_service = conversation_service
         self.planner = planner
@@ -32,6 +33,7 @@ class Orchestrator:
         self.context_provider = context_provider
         self.plan_logger = plan_logger
         self.failure_logger = failure_logger
+        self.scope_enforcer = scope_enforcer
 
     async def handle(self, message: str, user_id: int, channel: str):
         # 1. save user msg
@@ -60,6 +62,7 @@ class Orchestrator:
             history=history,
             context=context,
         )
+        plan = self.scope_enforcer.apply(plan, context)
         
         await self.plan_logger.log(
             user_id=user_id,

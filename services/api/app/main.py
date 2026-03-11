@@ -22,6 +22,7 @@ from failure_logger.service import FailureLoggerService
 # llm
 from llm.gemini import GeminiClient
 from llm.openai_embed import OpenAIEmbeddingClient
+from planning.scope_enforcer import ScopeEnforcer
 from policy.prompt_builder import EDIMPromptBuilder
 from planning.plan_logger import PlanLogger
 
@@ -112,6 +113,7 @@ planner = Planner(
     llm=llm_client,
     prompt_builder=planner_prompt_builder,
 )
+scope_enforcer = ScopeEnforcer()
 planner_logs = mongo_db["planner_logs"]
 plan_logger = PlanLogger(planner_logs)
 
@@ -162,6 +164,7 @@ orchestrator = Orchestrator(
     context_provider=context_provider,
     plan_logger=plan_logger,
     failure_logger=failure_logger,
+    scope_enforcer=scope_enforcer,
 )
 
 
