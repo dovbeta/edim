@@ -8,11 +8,19 @@ DATA_CATALOG = {
     "contacts": "structured_data",
     "vehicles": "structured_data",
     "units": "structured_data",
+    "organizations": "structured_data",
+    "buildings": "structured_data",
+    "roles": "structured_data",
 
     "rules": "vector_knowledge",
     "faq": "vector_knowledge",
     "services": "vector_knowledge",
     "announcements": "vector_knowledge",
+
+    "greeting": "none",
+    "thanks": "none",
+    "smalltalk": "none",
+    "unknown": "none",
 }
 
 
