@@ -4,7 +4,7 @@ import math
 
 from sqlalchemy import select
 from db.session import AsyncSessionLocal
-from db.models import Unit, User, UserUnit
+from db.models import Unit, User, UserUnit, Building, Organization
 
 
 def clean_str(v):
@@ -55,7 +55,13 @@ async def import_residents(provider_id: UUID, items: List[Dict]):
                 continue
 
             res = await session.execute(
-                select(Unit).where(Unit.personal_account == unit_number)
+                select(Unit)
+                .join(Building, Unit.building_id == Building.id)
+                .join(Organization, Building.organization_id == Organization.id)
+                .where(
+                    Unit.personal_account == unit_number,
+                    Organization.provider_id == provider_id,
+                )
             )
             unit = res.scalars().first()
             if not unit:
