@@ -108,6 +108,14 @@ import-provider:
 		--provider-id $(PROVIDER) \
 		$(foreach i,$(INCLUDE),--include $(i))
 
+# Import knowledge base only (and vectorize it)
+# usage:
+#   make import-knowledge PROVIDER=<uuid>
+import-knowledge:
+	$(COMPOSE) exec $(API) python -m integrations.cli.import_provider \
+		--provider-id $(PROVIDER) \
+		--include knowledge
+
 # Import all providers
 import-all:
 	$(COMPOSE) exec $(API) python -m app.integrations.cli.import_all_providers
@@ -171,5 +179,6 @@ help:
 	@echo "  make seed          - seed data"
 	@echo ""
 	@echo "  make import-provider PROVIDER=<uuid> [INCLUDE=\"units buildings residents vehicles\"]"
+	@echo "  make import-knowledge PROVIDER=<uuid>   - import knowledge base + vectorize"
 	@echo "  make import-all"
 	@echo ""

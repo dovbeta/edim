@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from db.session import AsyncSessionLocal
@@ -45,6 +46,12 @@ from gateway.chat_gateway import ChatGateway
 from gateway.identity_service import IdentityService
 
 from core.settings import settings
+
+# Ensure our app-level INFO logs are visible in container logs.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 # api models
 from core.chat_request import ChatRequest

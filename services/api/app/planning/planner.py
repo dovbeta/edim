@@ -1,5 +1,9 @@
 from typing import List, Dict, Any
 from .plan_models import Plan
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 DATA_CATALOG = {
@@ -42,7 +46,8 @@ class Planner:
         history: List[Dict],
         context: Dict[str, Any],
     ) -> Plan:
-
+        request_id = (context or {}).get("request_id")
+        t0 = time.perf_counter()
         prompt = self.prompt_builder.build(
             message=message,
             context=context,
@@ -73,7 +78,7 @@ class Planner:
         if intent in ["greeting", "thanks", "smalltalk"]:
             sources = ["none"]
 
-        return Plan(
+        plan = Plan(
             intent=intent,
             sources=sources,
             query=result.get("query", message),
@@ -84,3 +89,12 @@ class Planner:
             needs_more_info=result.get("needs_more_info", False),
             explanation=result.get("explanation"),
         )
+        logger.info(
+            "planner.done request_id=%s intent=%s sources=%s has_sql=%s ms=%s",
+            request_id,
+            plan.intent,
+            plan.sources,
+            bool(plan.structured_query),
+            int((time.perf_counter() - t0) * 1000),
+        )
+        return plan
