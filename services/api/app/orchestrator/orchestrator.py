@@ -201,12 +201,46 @@ class Orchestrator:
             int((time.perf_counter() - t0) * 1000),
         )
 
-        # 6. save ai reply
+        # 6. save ai reply with metadata
+        found_info = False
+        if error is None:
+            if isinstance(data, list):
+                found_info = len(data) > 0
+            elif isinstance(data, dict):
+                # any non-empty structured/vector result
+                found_info = bool(data)
+
+        intent = getattr(plan, "intent", None) if plan else None
+        # Heuristic: intents, що стосуються ЖКГ / будинку
+        housing_intents = {
+            "resident_address",
+            "resident_debt",
+            "contacts",
+            "vehicles",
+            "units",
+            "organizations",
+            "buildings",
+            "roles",
+            "services",
+            "announcements",
+            "rules",
+            "faq",
+        }
+        is_housing_utility = intent in housing_intents
+
+        meta = {
+            "request_id": request_id,
+            "found_info": found_info,
+            "is_housing_utility": is_housing_utility,
+        }
+
         try:
             await self.conversation_service.save_ai_message(
                 user_id=user_id,
                 text=answer,
                 channel=channel,
+                intent=intent,
+                meta=meta,
             )
         except Exception:
             logger.exception("chat.history.save_ai_failed request_id=%s", request_id)

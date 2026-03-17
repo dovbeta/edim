@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 class ConversationService:
     """
@@ -19,13 +19,22 @@ class ConversationService:
             text=text,
         )
 
-    async def save_ai_message(self, user_id: int, text: str, channel: str = "default"):
+    async def save_ai_message(
+        self,
+        user_id: int,
+        text: str,
+        channel: str = "default",
+        intent: Optional[str] = None,
+        meta: Optional[Dict] = None,
+    ):
         """Stores an assistant message."""
         await self.repo.add_message(
             user_id=user_id,
             channel=channel,
             role="assistant",
             text=text,
+            intent=intent,
+            meta=meta,
         )
 
     async def get_recent_history(self, user_id: int, limit: int = 10, channel: str = "default") -> List[Dict]:

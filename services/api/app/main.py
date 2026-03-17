@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -56,6 +56,8 @@ logging.basicConfig(
 # api models
 from core.chat_request import ChatRequest
 from core.contact_request import ContactRequest
+
+from typing import List, Optional
 
 
 app = FastAPI(title="E-Dim Copilot API")
@@ -219,3 +221,111 @@ async def contact(req: ContactRequest):
         last_name=req.last_name,
         username=req.username,
     )
+
+
+@app.get("/admin/messages")
+async def admin_messages(
+    userId: Optional[str] = Query(None, alias="userId"),
+    intent: Optional[str] = None,
+    dataSource: Optional[str] = Query(None, alias="dataSource"),
+    answered: Optional[bool] = None,
+    page: int = 1,
+    pageSize: int = 50,
+):
+    """
+    Returns chat messages + AI answers with basic filters for admin UI.
+    Reads from Mongo collections: messages (chat history) and planner_logs.
+    """
+    skip = max(0, (page - 1) * pageSize)
+    limit = max(1, min(pageSize, 200))
+
+    # Base query: group messages by user, chronological
+    q: dict = {}
+    if userId:
+        q["user_id"] = userId
+
+    # Fetch recent window from Mongo
+    cursor = (
+        mongo_messages.find(q)
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+    docs: List[dict] = await cursor.to_list(length=limit)
+
+    # Map by request pattern: user → assistant pairs
+    items = []
+    for doc in docs:
+        if doc.get("role") != "user":
+            continue
+
+        user_msg = doc
+        # find next assistant message for same user/channel
+        reply = await mongo_messages.find_one(
+            {
+                "user_id": user_msg["user_id"],
+                "channel": user_msg.get("channel"),
+                "role": "assistant",
+                "created_at": {"$gte": user_msg["created_at"]},
+            },
+            sort=[("created_at", 1)],
+        )
+
+        # try to attach planner info (intent, sources, data source)
+        plan = await planner_logs.find_one(
+            {
+                "user_id": user_msg["user_id"],
+                "channel": user_msg.get("channel"),
+                "message": user_msg["text"],
+            },
+            sort=[("created_at", -1)],
+        )
+
+        intent_val: Optional[str] = None
+        sources: List[str] = []
+        data_source: Optional[str] = None
+
+        if plan:
+            intent_val = plan.get("intent")
+            sources = plan.get("sources") or []
+            if "structured_data" in sources and "vector_knowledge" in sources:
+                data_source = "combined"
+            elif "structured_data" in sources:
+                data_source = "structured"
+            elif "vector_knowledge" in sources:
+                data_source = "vector"
+            else:
+                data_source = "none"
+
+        record_answered = reply is not None
+
+        # Apply filters on intent / dataSource / answered
+        if intent and intent_val != intent:
+            continue
+        if dataSource and data_source != dataSource:
+            continue
+        if answered is not None and record_answered != answered:
+            continue
+
+        items.append(
+            {
+                "id": str(user_msg.get("_id")),
+                "userId": user_msg["user_id"],
+                "userName": None,
+                "createdAt": user_msg["created_at"].isoformat(),
+                "requestId": user_msg.get("meta", {}).get("request_id"),
+                "question": user_msg["text"],
+                "answer": reply["text"] if reply else "",
+                "intent": intent_val,
+                "sources": sources,
+                "dataSource": data_source,
+                "answered": record_answered,
+            }
+        )
+
+    total = await mongo_messages.count_documents(q)
+
+    return {
+        "items": items,
+        "total": total,
+    }
