@@ -1,9 +1,11 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict
 from uuid import UUID
+
 from sqlalchemy import select
+
 from db.session import AsyncSessionLocal
-from db.models import Unit
+from db.models import Unit, Building, Organization
 
 
 async def import_debts(provider_id: UUID, items: List[Dict]):
@@ -16,8 +18,18 @@ async def import_debts(provider_id: UUID, items: List[Dict]):
                 if not pa:
                     continue
 
+                # Match units only within buildings that belong to organizations
+                # served by this provider. This prevents overwriting debts for
+                # units of other organizations that may reuse the same personal
+                # account number.
                 res = await session.execute(
-                    select(Unit).where(Unit.personal_account == str(pa))
+                    select(Unit)
+                    .join(Building, Unit.building_id == Building.id)
+                    .join(Organization, Building.organization_id == Organization.id)
+                    .where(
+                        Unit.personal_account == str(pa),
+                        Organization.provider_id == provider_id,
+                    )
                 )
                 unit = res.scalars().first()
 
