@@ -18,71 +18,75 @@ def clean_str(v):
 
 async def import_residents(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
-        for item in items:
+        with session.no_autoflush:
+            for i, item in enumerate(items):
 
-            phone = clean_str(item.get("phone"))
-            if not phone:
-                continue
+                phone = clean_str(item.get("phone"))
+                if not phone:
+                    continue
 
-            first_name = clean_str(item.get("first_name"))
-            last_name = clean_str(item.get("last_name"))
-            middle_name = clean_str(item.get("middle_name"))
-            email = clean_str(item.get("email"))
+                first_name = clean_str(item.get("first_name"))
+                last_name = clean_str(item.get("last_name"))
+                middle_name = clean_str(item.get("middle_name"))
+                email = clean_str(item.get("email"))
 
-            # --- user ---
-            res = await session.execute(
-                select(User).where(User.phone == phone)
-            )
-            user = res.scalars().first()
-
-            if not user:
-                user = User(
-                    phone=phone,
-                    first_name=first_name,
-                    last_name=last_name,
-                    middle_name=middle_name,
-                    email=email,
+                # --- user ---
+                res = await session.execute(
+                    select(User).where(User.phone == phone)
                 )
-                session.add(user)
-                await session.flush()  # отримати user.id
-            else:
-                if not user.email and email:
-                    user.email = email
+                user = res.scalars().first()
 
-            # --- unit ---
-            unit_number = clean_str(item.get("unit_number"))
-            if not unit_number:
-                continue
+                if not user:
+                    user = User(
+                        phone=phone,
+                        first_name=first_name,
+                        last_name=last_name,
+                        middle_name=middle_name,
+                        email=email,
+                    )
+                    session.add(user)
+                    await session.flush()  # отримати user.id
+                else:
+                    if not user.email and email:
+                        user.email = email
 
-            res = await session.execute(
-                select(Unit)
-                .join(Building, Unit.building_id == Building.id)
-                .join(Organization, Building.organization_id == Organization.id)
-                .where(
-                    Unit.personal_account == unit_number,
-                    Organization.provider_id == provider_id,
-                )
-            )
-            unit = res.scalars().first()
-            if not unit:
-                continue
+                # --- unit ---
+                unit_number = clean_str(item.get("unit_number"))
+                if not unit_number:
+                    continue
 
-            # --- link ---
-            res = await session.execute(
-                select(UserUnit).where(
-                    UserUnit.user_id == user.id,
-                    UserUnit.unit_id == unit.id,
-                )
-            )
-            link = res.scalars().first()
-
-            if not link:
-                session.add(
-                    UserUnit(
-                        user_id=user.id,
-                        unit_id=unit.id,
-                        role=clean_str(item.get("role")) or "resident",
+                res = await session.execute(
+                    select(Unit)
+                    .join(Building, Unit.building_id == Building.id)
+                    .join(Organization, Building.organization_id == Organization.id)
+                    .where(
+                        Unit.personal_account == unit_number,
+                        Organization.provider_id == provider_id,
                     )
                 )
+                unit = res.scalars().first()
+                if not unit:
+                    continue
 
-        await session.commit()
+                # --- link ---
+                res = await session.execute(
+                    select(UserUnit).where(
+                        UserUnit.user_id == user.id,
+                        UserUnit.unit_id == unit.id,
+                    )
+                )
+                link = res.scalars().first()
+
+                if not link:
+                    session.add(
+                        UserUnit(
+                            user_id=user.id,
+                            unit_id=unit.id,
+                            role=clean_str(item.get("role")) or "resident",
+                        )
+                    )
+
+                if (i + 1) % 100 == 0:
+                    await session.commit()
+
+            await session.commit()

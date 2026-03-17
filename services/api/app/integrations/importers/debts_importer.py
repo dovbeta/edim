@@ -8,26 +8,30 @@ from db.models import Unit
 
 async def import_debts(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
-        for item in items:
-            pa = item.get("personal_account")
-            debt = item.get("debt_total")
+        with session.no_autoflush:
+            for i, item in enumerate(items):
+                pa = item.get("personal_account")
+                debt = item.get("debt_total")
 
-            if not pa:
-                continue
+                if not pa:
+                    continue
 
-            res = await session.execute(
-                select(Unit).where(Unit.personal_account == str(pa))
-            )
-            unit = res.scalars().first()
+                res = await session.execute(
+                    select(Unit).where(Unit.personal_account == str(pa))
+                )
+                unit = res.scalars().first()
 
-            if not unit:
-                continue
+                if not unit:
+                    continue
 
-            value = Decimal(str(debt or 0)).quantize(
-                Decimal("0.01"),
-                rounding=ROUND_HALF_UP
-            )
+                value = Decimal(str(debt or 0)).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP
+                )
 
-            unit.debt_total = value
+                unit.debt_total = value
 
-        await session.commit()
+                if (i + 1) % 100 == 0:
+                    await session.commit()
+            
+            await session.commit()

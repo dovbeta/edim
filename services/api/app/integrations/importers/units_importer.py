@@ -8,61 +8,65 @@ from db.models import Unit, Building
 
 async def import_units(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
-        for item in items:
-            ext_b_id = item.get("building_external_id")
-            number = item.get("number")
+        with session.no_autoflush:
+            for i, item in enumerate(items):
+                ext_b_id = item.get("building_external_id")
+                number = item.get("number")
 
-            if not ext_b_id or not number:
-                continue
+                if not ext_b_id or not number:
+                    continue
 
-            # ---------- find building ----------
-            b_result = await session.execute(
-                select(Building).where(Building.external_id == str(ext_b_id))
-            )
-            building = b_result.scalars().first()
-
-            if not building:
-                continue
-
-            unit_type = item.get("type", "apartment")
-            external_id = item.get("external_id")
-
-            # ---------- find existing unit ----------
-            existing_result = await session.execute(
-                select(Unit).where(
-                    Unit.building_id == building.id,
-                    Unit.number == str(number),
-                    Unit.unit_type == unit_type,
+                # ---------- find building ----------
+                b_result = await session.execute(
+                    select(Building).where(Building.external_id == str(ext_b_id))
                 )
-            )
-            unit = existing_result.scalars().first()
+                building = b_result.scalars().first()
 
-            # ---------- create ----------
-            if not unit:
-                unit = Unit(
-                    number=str(number),
-                    building_id=building.id,
-                    unit_type=unit_type,
-                    external_id=str(external_id) if external_id else None,
+                if not building:
+                    continue
+
+                unit_type = item.get("type", "apartment")
+                external_id = item.get("external_id")
+
+                # ---------- find existing unit ----------
+                existing_result = await session.execute(
+                    select(Unit).where(
+                        Unit.building_id == building.id,
+                        Unit.number == str(number),
+                        Unit.unit_type == unit_type,
+                    )
                 )
-                session.add(unit)
+                unit = existing_result.scalars().first()
 
-            # ---------- update fields ----------
-            unit.external_id = str(external_id) if external_id else unit.external_id
+                # ---------- create ----------
+                if not unit:
+                    unit = Unit(
+                        number=str(number),
+                        building_id=building.id,
+                        unit_type=unit_type,
+                        external_id=str(external_id) if external_id else None,
+                    )
+                    session.add(unit)
 
-            unit.section = item.get("section")
-            unit.floor = item.get("floor")
+                # ---------- update fields ----------
+                unit.external_id = str(external_id) if external_id else unit.external_id
 
-            unit.area_total = item.get("area_total")
-            unit.area_living = item.get("area_living")
-            unit.area_heating = item.get("area_heating")
+                unit.section = item.get("section")
+                unit.floor = item.get("floor")
 
-            unit.rooms = item.get("rooms")
-            unit.personal_account = item.get("personal_account")
+                unit.area_total = item.get("area_total")
+                unit.area_living = item.get("area_living")
+                unit.area_heating = item.get("area_heating")
 
-            unit.residents_registered = item.get("residents_registered")
-            unit.residents_living = item.get("residents_living")
+                unit.rooms = item.get("rooms")
+                unit.personal_account = item.get("personal_account")
 
-            unit.is_debtor = item.get("is_debtor")
+                unit.residents_registered = item.get("residents_registered")
+                unit.residents_living = item.get("residents_living")
 
-        await session.commit()
+                unit.is_debtor = item.get("is_debtor")
+
+                if (i + 1) % 100 == 0:
+                    await session.commit()
+
+            await session.commit()
