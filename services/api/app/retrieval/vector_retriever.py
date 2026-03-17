@@ -44,7 +44,8 @@ class VectorRetriever:
         else:
             filter_doc = {}
 
-        pipeline = [
+        def build_pipeline(filter_):
+            return [
             {
                 "$vectorSearch": {
                     "index": "vector_index",
@@ -52,7 +53,7 @@ class VectorRetriever:
                     "queryVector": query_embedding,
                     "numCandidates": 100,
                     "limit": 5,
-                    "filter": filter_doc
+                    "filter": filter_
                 }
             },
             {
@@ -64,13 +65,25 @@ class VectorRetriever:
                     "score": {"$meta": "vectorSearchScore"}
                 }
             }
-        ]
+            ]
 
         # 3️⃣ execute query
         results = []
 
+        pipeline = build_pipeline(filter_doc)
+
         async for doc in self.collection.aggregate(pipeline):
             results.append(doc)
+
+        # If фільтр по organization_id нічого не дав, пробуємо без фільтра
+        if not results and filter_doc:
+            logger.info(
+                "vector.retry_without_filter request_id=%s org_ids=%s",
+                request_id,
+                org_ids,
+            )
+            async for doc in self.collection.aggregate(build_pipeline({})):
+                results.append(doc)
         logger.info(
             "vector.done request_id=%s chunks=%s ms=%s",
             request_id,
