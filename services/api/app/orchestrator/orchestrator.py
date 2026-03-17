@@ -1,6 +1,7 @@
 from typing import Any
 from conversation.conversation_service import ConversationService
 from planning.planner import Planner
+from planning.scope_enforcer import PolicyError
 from retrieval.data_router import DataRouter
 
 class Orchestrator:
@@ -49,7 +50,7 @@ class Orchestrator:
             channel=channel,
             limit=10,
         )
-        
+
         context = await self.context_provider.get(
             user_id=user_id,
             message=message,
@@ -57,37 +58,50 @@ class Orchestrator:
         )
 
         # 3. plan
-        plan = await self.planner.plan(
-            message=message,
-            history=history,
-            context=context,
-        )
-        plan = self.scope_enforcer.apply(plan, context)
-        
-        await self.plan_logger.log(
-            user_id=user_id,
-            channel=channel,
-            message=message,
-            context=context,
-            plan=plan,
-        )
-
-        # 4. retrieve data
-        data = None
         error = None
         try:
-            data = await self.data_router.retrieve(plan)
-        except Exception as e:
-            print(f"Retrieval error: {e}")
+            plan = await self.planner.plan(
+                message=message,
+                history=history,
+                context=context,
+            )
+            plan = self.scope_enforcer.apply(plan, context)
+        except PolicyError as e:
+            # controlled policy/tenant violation – no data retrieval, just explanation
+            plan = None
             error = str(e)
             await self.failure_logger.log_failure(
-                component="orchestrator_retrieval",
+                component="orchestrator_policy",
                 exception=e,
                 meta={
                     "user_id": str(user_id),
-                    "plan": plan.__dict__,
+                    "channel": channel,
                 }
             )
+        else:
+            await self.plan_logger.log(
+                user_id=user_id,
+                channel=channel,
+                message=message,
+                context=context,
+                plan=plan,
+            )
+
+        # 4. retrieve data
+        data = None
+        if error is None and plan is not None:
+            try:
+                data = await self.data_router.retrieve(plan, context=context)
+            except Exception as e:
+                error = str(e)
+                await self.failure_logger.log_failure(
+                    component="orchestrator_retrieval",
+                    exception=e,
+                    meta={
+                        "user_id": str(user_id),
+                        "plan": getattr(plan, "__dict__", None),
+                    }
+                )
 
         # 5. generate answer
         answer = await self.responder.respond(

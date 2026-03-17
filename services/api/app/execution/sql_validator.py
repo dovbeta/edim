@@ -3,13 +3,20 @@ class SQLValidator:
         self.allowed_tables = allowed_tables
 
     def validate(self, sql: str, role: str | None = None):
-        s = sql.lower()
+        s = sql.lower().strip()
 
         if not s.startswith("select"):
             raise ValueError("Only SELECT allowed")
 
-        # Board role has extended permissions: allow bulk selections
-        if role == "board":
+        for table in self.allowed_tables:
+            if f" {table} " in s or f"{table}." in s:
+                break
+        else:
+            # No allowed table referenced at all
+            raise ValueError("Query references disallowed tables")
+
+        # Organization leaders have extended permissions: allow bulk selections
+        if role in {"board", "board_member", "manager"}:
             return
 
         forbidden_bulk_patterns = [

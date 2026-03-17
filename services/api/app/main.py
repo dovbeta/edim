@@ -1,5 +1,3 @@
-import os
-
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -44,6 +42,9 @@ from response.responder import Responder
 # orchestrator + gateway
 from orchestrator.orchestrator import Orchestrator
 from gateway.chat_gateway import ChatGateway
+from gateway.identity_service import IdentityService
+
+from core.settings import settings
 
 # api models
 from core.chat_request import ChatRequest
@@ -65,8 +66,8 @@ def get_session_factory():
 # MONGO CHAT HISTORY
 # -------------------------------------------------
 
-mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-mongo_db = mongo_client[os.getenv("MONGO_DB", "edim")]
+mongo_client = AsyncIOMotorClient(settings.mongo_url)
+mongo_db = mongo_client[settings.mongo_db]
 mongo_messages = mongo_db["messages"]
 mongo_knowledge = mongo_db["knowledge"]
 
@@ -126,12 +127,15 @@ validator = SQLValidator(
     allowed_tables={
         "users",
         "units",
+        "units_extended",
         "buildings",
         "organizations",
         "vehicles",
         "user_organizations",
+        "user_units",
         "invoices",
         "payments",
+        "unit_residents",
     }
 )
 sql_executor = SQLExecutor(session_factory=AsyncSessionLocal)
@@ -172,10 +176,13 @@ orchestrator = Orchestrator(
 # GATEWAY
 # -------------------------------------------------
 
+identity_service = IdentityService()
+
 gateway = ChatGateway(
     session_factory=get_session_factory(),
     orchestrator=orchestrator,
     failure_logger=failure_logger,
+    identity_service=identity_service,
 )
 
 

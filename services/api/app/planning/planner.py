@@ -73,8 +73,6 @@ class Planner:
         if intent in ["greeting", "thanks", "smalltalk"]:
             sources = ["none"]
 
-        print(f"Intent: {intent}, Sources: {sources}, response: {result}")
-
         return Plan(
             intent=intent,
             sources=sources,

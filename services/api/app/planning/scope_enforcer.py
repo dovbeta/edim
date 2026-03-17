@@ -1,5 +1,10 @@
 import re
 
+
+class PolicyError(Exception):
+    """Raised when a security or tenant-scope policy is violated."""
+
+
 class ScopeEnforcer:
 
     def apply(self, plan, context):
@@ -14,7 +19,7 @@ class ScopeEnforcer:
         building_ids = scope.get("building_ids", [])
 
         if not building_ids:
-            return plan
+            raise PolicyError("No building scope available for structured query")
 
         clause = "building_id = ANY(:building_ids)"
 

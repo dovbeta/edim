@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 from .structured_retriever import StructuredRetriever
 from .vector_retriever import VectorRetriever
 from planning.plan_models import Plan
@@ -11,15 +11,15 @@ class DataRouter:
     def __init__(self, structured_retriever: StructuredRetriever, vector_retriever: VectorRetriever):
         self.structured_retriever = structured_retriever
         self.vector_retriever = vector_retriever
-
-    async def retrieve(self, plan: Plan) -> Any:
+ 
+    async def retrieve(self, plan: Plan, context: Dict[str, Any] | None = None) -> Any:
         results = {}
 
         print(f"Retrieving data from sources: {plan.sources}")
 
         
         if "structured_data" in plan.sources:
-            results["structured_data"] = await self.structured_retriever.retrieve(plan)
+            results["structured_data"] = await self.structured_retriever.retrieve(plan, context=context)
             
         if "vector_data" in plan.sources:
             results["vector_data"] = await self.vector_retriever.retrieve(plan)

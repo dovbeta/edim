@@ -17,7 +17,11 @@ class StructuredRetriever:
             return None
         
         # Validation
-        self.validator.validate(plan.structured_query)
+        role = None
+        if context:
+            # очікується, що роль користувача/організації буде в контексті
+            role = context.get("role") or context.get("user_role")
+        self.validator.validate(plan.structured_query, role=role)
         
         # Execution
         data = await self.executor.run(

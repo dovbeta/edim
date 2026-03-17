@@ -9,10 +9,10 @@ class TenantScope:
         if "organization_id" in sql.lower():
             return sql
 
-        if " join buildings " in sql.lower():
-            return sql.replace(
-                "WHERE",
-                "WHERE buildings.organization_id = :organization_id AND "
-            )
+        # if " join buildings " in sql.lower():
+        #     return sql.replace(
+        #         "WHERE",
+        #         "WHERE buildings.organization_id = :organization_id AND "
+        #     )
 
         return sql
