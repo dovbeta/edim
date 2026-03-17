@@ -23,15 +23,27 @@ class VectorRetriever:
         request_id = (context or {}).get("request_id")
         scope = (context or {}).get("scope", {}) or {}
         org_ids = scope.get("organization_ids") or []
-        org_id = org_ids[0] if org_ids else None
 
         t0 = time.perf_counter()
-        logger.info("vector.start request_id=%s org_id=%s query_len=%s", request_id, org_id, len(plan.query or ""))
+        logger.info(
+            "vector.start request_id=%s org_ids=%s query_len=%s",
+            request_id,
+            org_ids,
+            len(plan.query or ""),
+        )
 
         # 1️⃣ create embedding
         query_embedding = await self.embedding_client.embed(plan.query)
 
         # 2️⃣ vector search pipeline
+        # Build organization filter: single id -> equality, many -> $in, none -> no filter
+        if len(org_ids) == 1:
+            filter_doc = {"organization_id": org_ids[0]}
+        elif len(org_ids) > 1:
+            filter_doc = {"organization_id": {"$in": org_ids}}
+        else:
+            filter_doc = {}
+
         pipeline = [
             {
                 "$vectorSearch": {
@@ -40,7 +52,7 @@ class VectorRetriever:
                     "queryVector": query_embedding,
                     "numCandidates": 100,
                     "limit": 5,
-                    "filter": ({"organization_id": org_id} if org_id else {})
+                    "filter": filter_doc
                 }
             },
             {
