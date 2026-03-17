@@ -26,10 +26,11 @@ class VectorRetriever:
 
         t0 = time.perf_counter()
         logger.info(
-            "vector.start request_id=%s org_ids=%s query_len=%s",
+            "vector.start request_id=%s org_ids=%s query_len=%s query_preview=%s",
             request_id,
             org_ids,
             len(plan.query or ""),
+            (plan.query or "")[:200].replace("\n", " "),
         )
 
         # 1️⃣ create embedding
@@ -43,6 +44,12 @@ class VectorRetriever:
             filter_doc = {"organization_id": {"$in": org_ids}}
         else:
             filter_doc = {}
+
+        logger.info(
+            "vector.filter request_id=%s filter=%s",
+            request_id,
+            filter_doc,
+        )
 
         def build_pipeline(filter_):
             return [
@@ -75,6 +82,21 @@ class VectorRetriever:
         async for doc in self.collection.aggregate(pipeline):
             results.append(doc)
 
+        if results:
+            preview = [
+                {
+                    "type": d.get("type"),
+                    "score": d.get("score"),
+                    "search_text": (d.get("search_text") or "")[:120].replace("\n", " "),
+                }
+                for d in results[:3]
+            ]
+            logger.info(
+                "vector.results.sample request_id=%s sample=%s",
+                request_id,
+                preview,
+            )
+
         # If фільтр по organization_id нічого не дав, пробуємо без фільтра
         if not results and filter_doc:
             logger.info(
@@ -84,6 +106,20 @@ class VectorRetriever:
             )
             async for doc in self.collection.aggregate(build_pipeline({})):
                 results.append(doc)
+            if results:
+                preview = [
+                    {
+                        "type": d.get("type"),
+                        "score": d.get("score"),
+                        "search_text": (d.get("search_text") or "")[:120].replace("\n", " "),
+                    }
+                    for d in results[:3]
+                ]
+                logger.info(
+                    "vector.results.sample_no_filter request_id=%s sample=%s",
+                    request_id,
+                    preview,
+                )
         logger.info(
             "vector.done request_id=%s chunks=%s ms=%s",
             request_id,
