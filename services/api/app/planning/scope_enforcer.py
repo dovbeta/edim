@@ -216,7 +216,10 @@ class ScopeEnforcer:
         if desired_unit_types and "unit_type" not in sql_lower:
             # Try to qualify unit_type with the main FROM alias if present.
             alias = None
-            m = re.search(r"\bfrom\s+(unit_residents|units_extended|units)\s+([a-zA-Z_]\w*)\b", sql_lower)
+            m = re.search(
+                r"\bfrom\s+(unit_residents|units_extended|units)\s+(?:as\s+)?([a-zA-Z_]\w*)\b",
+                sql_lower,
+            )
             if m:
                 alias = m.group(2)
             # Normalize stored values on the fly (case/whitespace tolerant).
@@ -256,7 +259,10 @@ class ScopeEnforcer:
 
             if not wants_other_types and not has_unit_type_filter:
                 alias = None
-                m = re.search(r"\bfrom\s+(unit_residents|units_extended|units)\s+([a-zA-Z_]\w*)\b", sql_lower)
+                m = re.search(
+                    r"\bfrom\s+(unit_residents|units_extended|units)\s+(?:as\s+)?([a-zA-Z_]\w*)\b",
+                    sql_lower,
+                )
                 if m:
                     alias = m.group(2)
                 col = f"{alias}.unit_type" if alias else "unit_type"
