@@ -228,7 +228,7 @@ async def admin_messages(
     userId: Optional[str] = Query(None, alias="userId"),
     intent: Optional[str] = None,
     dataSource: Optional[str] = Query(None, alias="dataSource"),
-    answered: Optional[bool] = None,
+    found: Optional[bool] = Query(None, alias="foundInfo"),
     page: int = 1,
     pageSize: int = 50,
 ):
@@ -298,13 +298,20 @@ async def admin_messages(
                 data_source = "none"
 
         record_answered = reply is not None
+        found_info = None
+        if reply and isinstance(reply, dict):
+            meta = reply.get("meta") or {}
+            if "found_info" in meta:
+                found_info = bool(meta.get("found_info"))
+            else:
+                found_info = record_answered
 
-        # Apply filters on intent / dataSource / answered
+        # Apply filters on intent / dataSource / foundInfo
         if intent and intent_val != intent:
             continue
         if dataSource and data_source != dataSource:
             continue
-        if answered is not None and record_answered != answered:
+        if found is not None and found_info is not None and found_info != found:
             continue
 
         items.append(
@@ -320,6 +327,7 @@ async def admin_messages(
                 "sources": sources,
                 "dataSource": data_source,
                 "answered": record_answered,
+                "foundInfo": found_info if found_info is not None else record_answered,
             }
         )
 

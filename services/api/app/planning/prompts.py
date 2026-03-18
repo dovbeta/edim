@@ -66,7 +66,8 @@ User:
             msgs = []
             for h in history[-4:]:
                 role = h.get("role")
-                text = h.get("text")
+                # ConversationService returns {role, content}; older code used {role, text}
+                text = h.get("text") or h.get("content")
                 msgs.append(f"{role}: {text}")
             history_text = "Recent conversation:\n" + "\n".join(msgs)
 
@@ -109,6 +110,10 @@ SQL RULES:
 - Aggregations MUST be aliased as value
 - If filtering by multiple values use: column = ANY(:param)
 - Car plate searches MUST use partial match with ILIKE and wildcards
+- Car plate normalization:
+  - Remove spaces/dashes from user input before searching (e.g., "23 45" -> "2345")
+  - Convert Cyrillic lookalike letters to Latin before searching (e.g., "вс 1234" -> "BC1234")
+  - Always search with wildcards: license_plate ILIKE '%' || :license_plate || '%'
 - If searching by an identifier (license_plate, phone, unit_number, document, etc),
   the SELECT MUST include that full identifier column from the database.
   
@@ -127,6 +132,11 @@ UNIT TYPE RULE
 The field unit_type describes the type of premises.
 If the user explicitly mentions the type of premises,
 the SQL query MUST include a filter on unit_type.
+
+Unit type mapping (use these exact values):
+- "квартира", "кв.", "кв " → unit_type = 'apartment'
+- "паркомісце", "паркінг", "місце на парковці" → unit_type = 'parking'
+- "комора", "кладова" → unit_type = 'storage'
 
 Always write queries as if data is already limited to the user's organization.
 

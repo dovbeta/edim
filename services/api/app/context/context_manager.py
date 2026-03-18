@@ -85,7 +85,10 @@ class ContextManager:
 
             properties.append({
                 "unit_id": str(unit.id),
-                "unit_number": unit.personal_account,
+                # apartment/unit number (human-facing)
+                "unit_number": unit.number,
+                # billing account identifier
+                "personal_account": unit.personal_account,
                 "unit_type": unit.unit_type,
                 "floor": unit.floor,
                 "section": unit.section,

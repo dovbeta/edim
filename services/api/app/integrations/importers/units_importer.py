@@ -6,6 +6,20 @@ from db.session import AsyncSessionLocal
 from db.models import Unit, Building
 
 
+def normalize_unit_type(raw: str | None) -> str:
+    if not raw:
+        return "apartment"
+    v = str(raw).strip().lower()
+    # Common Ukrainian/Russian labels from providers
+    if "кварт" in v or v in {"apt", "apartment"}:
+        return "apartment"
+    if "парком" in v or "паркін" in v or "parking" in v:
+        return "parking"
+    if "комор" in v or "кладов" in v or "storage" in v:
+        return "storage"
+    return v
+
+
 async def import_units(provider_id: UUID, items: List[Dict]):
     async with AsyncSessionLocal() as session:
         with session.no_autoflush:
@@ -25,7 +39,7 @@ async def import_units(provider_id: UUID, items: List[Dict]):
                 if not building:
                     continue
 
-                unit_type = item.get("type", "apartment")
+                unit_type = normalize_unit_type(item.get("type", "apartment"))
                 external_id = item.get("external_id")
 
                 # ---------- find existing unit ----------

@@ -8,6 +8,7 @@ from planning.planner import Planner
 from planning.scope_enforcer import PolicyError
 from retrieval.data_router import DataRouter
 from policy.edim_policy import EDIMAccessPolicy
+from retrieval.structured_retriever import TooManyStructuredResultsError
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +171,14 @@ class Orchestrator:
                     request_id,
                     int((time.perf_counter() - tr) * 1000),
                 )
+            except TooManyStructuredResultsError as e:
+                data = None
+                error = (
+                    "Знайдено забагато записів. "
+                    "Будь ласка, уточніть запит (будинок/підʼїзд/квартира/ПІБ/номер авто), "
+                    "щоб отримати коротку відповідь."
+                )
+                logger.warning("chat.retrieve.too_many_results request_id=%s error=%s", request_id, str(e))
             except Exception as e:
                 error = str(e)
                 logger.exception("chat.retrieve.failed request_id=%s error=%s", request_id, error)
