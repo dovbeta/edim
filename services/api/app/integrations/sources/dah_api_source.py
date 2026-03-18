@@ -177,13 +177,29 @@ class DahAPISource(APISource):
             )
 
         residents: List[Dict] = []
+        total_rows = len(df)
+        parsed_ok = 0
+        missing_premises = 0
+        parse_failed = 0
+        bad_examples = []
 
         for _, row in df.iterrows():
             premises = row.get("Приміщення")
 
             section, unit_type, unit_number = parse_premises(premises)
+            if premises is None or (isinstance(premises, float) and premises != premises):
+                missing_premises += 1
+
+            if section is None and unit_type is None and unit_number is None:
+                parse_failed += 1
+                if len(bad_examples) < 5:
+                    bad_examples.append({"premises": str(premises)[:80] if premises is not None else None})
+
             full_name = row.get("ПІП")
             last_name, first_name, middle_name = split_full_name(full_name)
+
+            if unit_number:
+                parsed_ok += 1
 
             residents.append(
                 {
@@ -198,6 +214,16 @@ class DahAPISource(APISource):
                     "section": section,
                 }
             )
+
+        logger.info(
+            "load_residents: total_rows=%s parsed_ok=%s missing_premises=%s parse_failed=%s",
+            total_rows,
+            parsed_ok,
+            missing_premises,
+            parse_failed,
+        )
+        if bad_examples:
+            logger.warning("load_residents bad_examples=%s", bad_examples)
 
         return residents
 

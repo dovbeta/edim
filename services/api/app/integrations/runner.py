@@ -15,6 +15,13 @@ from .knowledge_vectorizer import vectorize_knowledge
 
 logger = logging.getLogger(__name__)
 
+# Make sure logs show up in CLI/docker output.
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
 async def run_provider_import(provider_id, include=None):
     if include is None:
         include = ["buildings", "units", "residents", "vehicles", "debts", "knowledge"]
@@ -31,24 +38,34 @@ async def run_provider_import(provider_id, include=None):
         logger.info(f"Starting import for provider {provider.name} (include: {include})")
 
         if "buildings" in include:
+            logger.info("Import buildings: provider_id=%s", provider_id)
             buildings = await source.load_buildings()
+            logger.info("Loaded buildings count=%s", len(buildings or []))
             await import_buildings(provider.id, buildings)
 
         if "units" in include:
+            logger.info("Import units: provider_id=%s", provider_id)
             units = await source.load_units()
+            logger.info("Loaded units count=%s", len(units or []))
             await import_units(provider.id, units)
 
         if "residents" in include:
+            logger.info("Import residents: provider_id=%s", provider_id)
             residents = await source.load_residents()
+            logger.info("Loaded residents count=%s", len(residents or []))
             await import_residents(provider.id, residents)
 
         if "vehicles" in include:
+            logger.info("Import vehicles: provider_id=%s", provider_id)
             vehicles = await source.load_vehicles()
+            logger.info("Loaded vehicles count=%s", len(vehicles or []))
             await import_vehicles(vehicles)
 
         if "debts" in include:
             try:
+                logger.info("Import debts: provider_id=%s", provider_id)
                 debts = await source.load_unit_debts()
+                logger.info("Loaded debts count=%s", len(debts or []))
                 await import_debts(provider.id, debts)
                 logger.info(f"Imported {len(debts)} unit debts")
             except AttributeError:
@@ -56,8 +73,10 @@ async def run_provider_import(provider_id, include=None):
 
         if "knowledge" in include:
             try:
+                logger.info("Import knowledge: provider_id=%s", provider_id)
                 knowledge = await (source.
                                    load_knowledge())
+                logger.info("Loaded knowledge items count=%s", len(knowledge or []))
                 await import_knowledge(provider.id, knowledge)
                 logger.info(f"Imported {len(knowledge)} knowledge items")
                 
