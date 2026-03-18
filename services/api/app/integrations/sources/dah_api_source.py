@@ -13,10 +13,19 @@ from utils.gdrive import GoogleDriveClient
 logger = logging.getLogger(__name__)
 
 def parse_premises(text: str):
-    if not text:
+    if text is None:
         return None, None, None
 
-    text = text.strip()
+    # Excel may provide NaN as float; treat as empty.
+    if isinstance(text, float):
+        # NaN check without importing math
+        if text != text:
+            return None, None, None
+
+    if not str(text).strip():
+        return None, None, None
+
+    text = str(text).strip()
 
     # optional section
     section_match = re.search(r"Під.?їзд\s*(\d+)", text, re.IGNORECASE)
