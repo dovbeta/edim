@@ -4,10 +4,13 @@ import pandas as pd
 import httpx
 import re
 import zipfile
+import logging
 from typing import List, Dict
 from .api_source import APISource
 from datetime import datetime
 from utils.gdrive import GoogleDriveClient
+
+logger = logging.getLogger(__name__)
 
 def parse_premises(text: str):
     if not text:
@@ -20,13 +23,52 @@ def parse_premises(text: str):
     section = section_match.group(1) if section_match else None
 
     # unit type + number (last word before number is type)
-    m = re.search(r"([^\d]+?)\s*(\d+)\s*$", text)
+    # Supports suffix after digits, e.g. "Квартира 160а", "110A"
+    m = re.search(
+        r"([^\d]+?)\s*(\d+)\s*([A-Za-zА-Яа-яІіЇїЄєҐґ])?\s*$",
+        text,
+    )
 
     if not m:
         return section, None, None
 
-    unit_type = m.group(1).strip().lower()
+    unit_type = m.group(1).strip().lower().strip(" ,.-")
     number = m.group(2)
+    suffix = (m.group(3) or "").strip()
+
+    # Convert Latin lookalike suffix letters to Ukrainian Cyrillic
+    # so "160A" matches "160а" in DB.
+    _lat_to_cyr = str.maketrans({
+        "A": "А",
+        "B": "В",
+        "C": "С",
+        "E": "Е",
+        "H": "Н",
+        "I": "І",
+        "K": "К",
+        "M": "М",
+        "O": "О",
+        "P": "Р",
+        "T": "Т",
+        "X": "Х",
+        "Y": "У",
+        "a": "а",
+        "b": "в",
+        "c": "с",
+        "e": "е",
+        "h": "н",
+        "i": "і",
+        "k": "к",
+        "m": "м",
+        "o": "о",
+        "p": "р",
+        "t": "т",
+        "x": "х",
+        "y": "у",
+    })
+    if suffix:
+        suffix = str(suffix).translate(_lat_to_cyr).lower()
+    number = f"{number}{suffix}" if suffix else number
 
     # прибираємо "Під’їзд X," якщо він є
     unit_type = re.sub(r"Під.?їзд\s*\d+,\s*", "", unit_type, flags=re.IGNORECASE)
@@ -159,11 +201,60 @@ class DahAPISource(APISource):
             r = await client.get(file_url)
             r.raise_for_status()
 
-        df = pd.read_excel(
-            io.BytesIO(r.content),
-            engine="openpyxl",
-            header=2,
-        )
+        content = r.content or b""
+        content_type = r.headers.get("content-type", "")
+
+        def _looks_like_html(b: bytes) -> bool:
+            head = b[:256].lstrip().lower()
+            return head.startswith(b"<!doctype html") or head.startswith(b"<html") or b"<html" in head
+
+        def _looks_like_xlsx_zip(b: bytes) -> bool:
+            # XLSX is a zip; zip files start with PK
+            return b[:2] == b"PK"
+
+        def _looks_like_xls_ole(b: bytes) -> bool:
+            # OLE2 compound document header
+            return b[:8] == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"
+
+        df = None
+        try:
+            if _looks_like_xlsx_zip(content):
+                df = pd.read_excel(io.BytesIO(content), engine="openpyxl", header=2)
+            else:
+                # try auto engine (may work if xlrd is installed for .xls)
+                df = pd.read_excel(io.BytesIO(content), header=2)
+        except zipfile.BadZipFile:
+            # Not an XLSX zip, try xls engine if available
+            if _looks_like_xls_ole(content):
+                try:
+                    df = pd.read_excel(io.BytesIO(content), engine="xlrd", header=2)
+                except Exception as e:
+                    raise ValueError(
+                        "Vehicles file looks like old .xls, but required engine is missing. "
+                        "Provide .xlsx file or install xlrd."
+                    ) from e
+            elif _looks_like_html(content):
+                raise ValueError(
+                    "Vehicles file URL returned HTML instead of an Excel file. "
+                    "If this is a Google Drive share link, use a direct download/export link."
+                )
+            else:
+                raise
+        except ValueError:
+            # Some providers return CSV
+            try:
+                df = pd.read_csv(io.BytesIO(content), encoding="utf-8")
+            except Exception:
+                logger.exception(
+                    "Failed to parse vehicles file. content_type=%s size=%s url=%s",
+                    content_type,
+                    len(content),
+                    file_url,
+                )
+                raise
+
+        if df is None:
+            raise ValueError("Vehicles file could not be parsed")
 
         df["ПІП"] = df["ПІП"].ffill()
         df["Телефон"] = df["Телефон"].ffill()

@@ -6,6 +6,8 @@ from sqlalchemy import select
 from db.session import AsyncSessionLocal
 from db.models import Unit, User, UserUnit, Building, Organization
 
+from .units_importer import normalize_unit_type
+
 
 def clean_str(v):
     if v is None:
@@ -54,15 +56,24 @@ async def import_residents(provider_id: UUID, items: List[Dict]):
                 unit_number = clean_str(item.get("unit_number"))
                 if not unit_number:
                     continue
+                unit_type_raw = clean_str(item.get("unit_type"))
+                unit_type = normalize_unit_type(unit_type_raw) if unit_type_raw else None
+                section = clean_str(item.get("section"))
+
+                conditions = [
+                    Unit.number == unit_number,
+                    Organization.provider_id == provider_id,
+                ]
+                if unit_type:
+                    conditions.append(Unit.unit_type == unit_type)
+                if section:
+                    conditions.append(Unit.section == section)
 
                 res = await session.execute(
                     select(Unit)
                     .join(Building, Unit.building_id == Building.id)
                     .join(Organization, Building.organization_id == Organization.id)
-                    .where(
-                        Unit.personal_account == unit_number,
-                        Organization.provider_id == provider_id,
-                    )
+                    .where(*conditions)
                 )
                 unit = res.scalars().first()
                 if not unit:
