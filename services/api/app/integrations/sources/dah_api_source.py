@@ -291,18 +291,59 @@ class DahAPISource(APISource):
         if df is None:
             raise ValueError("Vehicles file could not be parsed")
 
-        df["ПІП"] = df["ПІП"].ffill()
-        df["Телефон"] = df["Телефон"].ffill()
+        # Normalize columns (trim, remove NBSP, etc.)
+        df.columns = [str(c).replace("\xa0", " ").strip() for c in df.columns]
+
+        # Column aliases (providers may use ПІП or ПІБ; sometimes extra spaces)
+        name_col = None
+        for c in ["ПІП", "ПІБ", "ПIП", "ПIБ"]:
+            if c in df.columns:
+                name_col = c
+                break
+
+        phone_col = None
+        for c in ["Телефон", "Телефoн"]:
+            if c in df.columns:
+                phone_col = c
+                break
+
+        model_col = None
+        for c in ["Модель", "Марка", "Авто"]:
+            if c in df.columns:
+                model_col = c
+                break
+
+        plate_col = None
+        for c in ["Номер", "Номерний знак", "Ліцензійний номер"]:
+            if c in df.columns:
+                plate_col = c
+                break
+
+        required = {
+            "ПІП/ПІБ": name_col,
+            "Телефон": phone_col,
+            "Модель": model_col,
+            "Номер": plate_col,
+        }
+        missing = [k for k, v in required.items() if not v]
+        if missing:
+            raise ValueError(
+                "Vehicles file has unexpected columns. Missing: "
+                f"{missing}. Available columns={df.columns.tolist()}"
+            )
+
+        df[name_col] = df[name_col].ffill()
+        df[phone_col] = df[phone_col].ffill()
 
         vehicles: List[Dict] = []
 
         for _, row in df.iterrows():
             vehicles.append(
                 {
-                    "full_name": row.get("ПІП"),
-                    "phone": row.get("Телефон"),
-                    "model": row.get("Модель"),
-                    "license_plate": row.get("Номер"),
+                    "full_name": row.get(name_col),
+                    "phone": row.get(phone_col),
+                    "model": row.get(model_col),
+                    "license_plate": row.get(plate_col),
                 }
             )
 
